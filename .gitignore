@@ -44,3 +44,7 @@ go.work
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 bin/
+
+# 代理工具使用的技能资料与锁定记录，不属于项目源码
+.agents/
+skills-lock.json
