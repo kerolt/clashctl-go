@@ -10,7 +10,7 @@
 - 订阅管理：添加、删除、切换、更新订阅，支持原生 Clash 配置与订阅格式转换。
 - 面板入口：输出内网、公网和公共服务面板地址。
 - TUN 模式：开关 TUN，必要时以提权方式重启内核。
-- 其他：Web 访问密钥、Mixin 编辑、日志查看、内核升级、首次安装。
+- 其他：Web 访问密钥、Mixin 编辑、日志查看、内核升级、clashctl 自升级、首次安装。
 
 ## 首次使用
 
@@ -148,7 +148,8 @@ Web UI 压缩包默认取 zashboard 的发布包，可用 `--ui-dist` 指定本�
 | `clashctl mixin [-e\|-r\|-c]` | 查看或编辑 Mixin、基础配置、运行配置 |
 | `clashctl secret [新密钥]` | 查看或修改 Web 访问密钥 |
 | `clashctl log [参数]` | 查看服务日志 |
-| `clashctl upgrade [-v\|-r\|-a]` | 通过本地控制接口升级内核 |
+| `clashctl upgrade [-v\|-r\|-a]` | 通过本地控制接口升级 mihomo 内核 |
+| `clashctl self-upgrade [--version <tag>]` | 从 GitHub Release 升级 clashctl 自身 |
 | `clashctl install [选项]` | 首次安装 |
 | `clashctl help` | 输出命令列表 |
 
@@ -217,7 +218,9 @@ clashctl tun off    # 关闭
 
 `clashctl log` 在 systemd 方式下读取 `journalctl -u <内核>`，其他方式读取安装目录或 `/var/log` 下的日志文件。
 
-`clashctl upgrade` 通过 `external-controller` 的 `/upgrade` 接口升级内核，`-r` 使用稳定版，`-a` 使用测试版，`-v` 同时跟随升级日志。
+`clashctl upgrade` 通过 `external-controller` 的 `/upgrade` 接口升级 mihomo 内核，`-r` 使用稳定版，`-a` 使用测试版，`-v` 同时跟随升级日志。
+
+`clashctl self-upgrade` 查询 `github.com/kerolt/clashctl-go` 的最新稳定 Release，下载当前 Linux 架构的程序文件，校验 `SHA256SUMS` 后原子替换当前的 clashctl。使用 `--version <tag>` 可以指定目标 Release，例如 `clashctl self-upgrade --version v1.2.3`。
 
 ## 配置
 
@@ -288,11 +291,12 @@ Web UI 未安装或下载失败。重新安装时不加 `--skip-ui`，或把面�
 ## 构建与测试
 
 ```bash
-make build     # 生成 bin/clashctl
-make test      # 单元测试
-make vet       # go vet
-make race      # 竞态检测
-make verify    # test + vet + gofmt 检查
+make build                         # 生成 bin/clashctl
+make release VERSION=v1.2.3        # 生成 GitHub Release 资源与 SHA256SUMS
+make test                           # 单元测试
+make vet                            # go vet
+make race                           # 竞态检测
+make verify                         # test + vet + gofmt 检查
 ```
 
 ## 范围说明
@@ -300,3 +304,4 @@ make verify    # test + vet + gofmt 检查
 - 不写 fish 配置。
 - 不提供卸载命令，删除安装目录并清理 shell 配置中的三行即可。
 - 内核升级依赖内核自身的控制接口，不下载内核文件。
+- tag 使用 `v<major>.<minor>.<patch>` 格式时，GitHub Actions 会构建 Linux amd64、arm64、386、arm 资源并创建 Release。

@@ -101,6 +101,8 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		return a.install(ctx, arguments)
 	case "upgrade":
 		return a.upgrade(ctx, arguments)
+	case "self-upgrade":
+		return a.selfUpgrade(ctx, arguments)
 	case "__env-on":
 		a.ShellOutput = true
 		return a.on(ctx, []string{"--env-only"})
@@ -131,7 +133,8 @@ Commands:
   secret                Web 密钥
   log                   查看日志
   install               首次安装
-  upgrade               升级内核
+  upgrade               升级 mihomo 内核
+  self-upgrade          升级 clashctl 自身
 
 Global Options:
   -h, --help            显示帮助信息
