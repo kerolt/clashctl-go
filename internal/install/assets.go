@@ -24,7 +24,7 @@ const (
 	latestReleaseAPI       = "https://api.github.com/repos/%s/releases/latest"
 )
 
-// NewClient 构造安装阶段使用的 HTTP 客户端，保持原脚本允许不校验证书的行为。
+// NewClient 构造安装阶段使用的 HTTP 客户端，允许不校验证书以适配自建下载代理。
 func NewClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,

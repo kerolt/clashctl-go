@@ -24,20 +24,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Profile describes one stored subscription profile.
+// Profile 描述一条已保存的订阅。
 type Profile struct {
 	ID   int    `yaml:"id"`
 	Path string `yaml:"path"`
 	URL  string `yaml:"url"`
 }
 
-// Metadata stores all subscription profiles and the selected profile id.
+// Metadata 保存全部订阅与当前使用的订阅 id。
 type Metadata struct {
 	Profiles []Profile `yaml:"profiles"`
 	Use      int       `yaml:"use,omitempty"`
 }
 
-// Manager stores subscription paths, HTTP settings, and kernel validation state.
+// Manager 保存订阅路径、HTTP 参数与内核校验所需信息。
 type Manager struct {
 	Paths      config.Paths
 	KernelPath string
@@ -46,10 +46,10 @@ type Manager struct {
 	HTTPClient *http.Client
 }
 
-// NewManager constructs a subscription Manager with the original download behavior.
+// NewManager 构造成阅管理器。
 func NewManager(paths config.Paths, kernelPath string, timeout time.Duration, userAgent string) *Manager {
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // 保持原脚本允许不校验证书的行为
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // 允许不校验证书，适配自建下载代理
 	}
 	return &Manager{
 		Paths:      paths,
@@ -60,7 +60,7 @@ func NewManager(paths config.Paths, kernelPath string, timeout time.Duration, us
 	}
 }
 
-// LoadMetadata reads subscription metadata and returns an empty list when it is absent.
+// LoadMetadata 读取订阅元数据，文件不存在时返回空列表。
 func (m *Manager) LoadMetadata() (Metadata, error) {
 	data, err := os.ReadFile(m.Paths.ProfilesMeta)
 	if errors.Is(err, os.ErrNotExist) {
@@ -79,7 +79,7 @@ func (m *Manager) LoadMetadata() (Metadata, error) {
 	return metadata, nil
 }
 
-// SaveMetadata writes subscription metadata to the configured profile file.
+// SaveMetadata 把订阅元数据写入配置的元数据文件。
 func (m *Manager) SaveMetadata(metadata Metadata) error {
 	data, err := yaml.Marshal(metadata)
 	if err != nil {
@@ -91,7 +91,7 @@ func (m *Manager) SaveMetadata(metadata Metadata) error {
 	return nil
 }
 
-// Add downloads, validates, and stores a new subscription profile.
+// Add 下载、校验并保存一条新订阅。
 func (m *Manager) Add(ctx context.Context, sourceURL string) (Profile, error) {
 	// 先检查重复订阅，再下载到临时文件。
 	metadata, err := m.LoadMetadata()
@@ -130,7 +130,7 @@ func (m *Manager) Add(ctx context.Context, sourceURL string) (Profile, error) {
 	return profile, m.log("➕ 已添加订阅：[%d] %s", profile.ID, profile.URL)
 }
 
-// Delete removes a subscription profile that is not currently selected.
+// Delete 删除一条未被使用的订阅。
 func (m *Manager) Delete(id int) (Profile, error) {
 	metadata, err := m.LoadMetadata()
 	if err != nil {
@@ -154,7 +154,7 @@ func (m *Manager) Delete(id int) (Profile, error) {
 	return profile, m.log("➖ 已删除订阅：[%d] %s", profile.ID, profile.URL)
 }
 
-// Update downloads and validates an existing subscription profile.
+// Update 下载并校验一条已存在的订阅。
 func (m *Manager) Update(ctx context.Context, id int, convert bool) (Profile, error) {
 	metadata, err := m.LoadMetadata()
 	if err != nil {
@@ -182,7 +182,7 @@ func (m *Manager) Update(ctx context.Context, id int, convert bool) (Profile, er
 	return profile, nil
 }
 
-// DownloadConfig obtains, normalizes, converts, and validates a subscription file.
+// DownloadConfig 获取、标准化、转换并校验订阅文件。
 func (m *Manager) DownloadConfig(ctx context.Context, destination, sourceURL string, convert bool) error {
 	if convert {
 		if err := m.convertConfig(ctx, destination, sourceURL); err != nil {
@@ -233,7 +233,7 @@ func (m *Manager) DownloadConfig(ctx context.Context, destination, sourceURL str
 	return m.validateNodes(destination)
 }
 
-// validateNodes checks that a subscription contains proxy nodes or providers.
+// validateNodes 确认订阅至少包含一个节点或节点提供者。
 func (m *Manager) validateNodes(path string) error {
 	if !hasNodes(path) {
 		return fmt.Errorf("subscription did not contain any proxy nodes")
@@ -241,7 +241,7 @@ func (m *Manager) validateNodes(path string) error {
 	return nil
 }
 
-// downloadRaw downloads one subscription response or copies a file URL.
+// downloadRaw 下载一份订阅响应，或读取 file 地址指向的文件。
 func (m *Manager) downloadRaw(ctx context.Context, destination, sourceURL string) error {
 	parsed, err := url.Parse(sourceURL)
 	if err != nil {
@@ -287,9 +287,9 @@ func (m *Manager) downloadRaw(ctx context.Context, destination, sourceURL string
 	return fmt.Errorf("download subscription: %w", lastErr)
 }
 
-// convertConfig starts or reuses subconverter and writes the converted profile.
+// convertConfig 启动或复用 subconverter，并写入转换后的配置。
 func (m *Manager) convertConfig(ctx context.Context, destination, sourceURL string) error {
-	// 转换流程结束时停止 subconverter，保持原脚本的进程生命周期。
+	// 转换流程结束时停止 subconverter，避免遗留后台进程。
 	parsed, err := url.Parse(sourceURL)
 	if err != nil {
 		return fmt.Errorf("parse subscription url: %w", err)
@@ -351,7 +351,7 @@ func (m *Manager) convertConfig(ctx context.Context, destination, sourceURL stri
 	return fmt.Errorf("subconverter did not start; check log %s", m.Paths.SubconverterLog)
 }
 
-// fetchConverted requests a Clash format profile from subconverter.
+// fetchConverted 从 subconverter 请求 Clash 格式配置。
 func (m *Manager) fetchConverted(ctx context.Context, destination, sourceURL string, port int) error {
 	endpoint := fmt.Sprintf("http://127.0.0.1:%d/sub", port)
 	query := url.Values{}
@@ -381,7 +381,7 @@ func (m *Manager) fetchConverted(ctx context.Context, destination, sourceURL str
 	return nil
 }
 
-// converterPort reads the subconverter port and selects a free replacement when needed.
+// converterPort 读取 subconverter 端口，被占用时选择并写回新端口。
 func (m *Manager) converterPort() (int, error) {
 	// 读取配置端口，冲突时写入新的随机端口。
 	value, err := config.Value(m.Paths.SubconverterConf, "server", "port")
@@ -407,9 +407,9 @@ func (m *Manager) converterPort() (int, error) {
 	return newPort, nil
 }
 
-// log appends one subscription operation entry to the profile log.
+// log 向订阅日志追加一条操作记录。
 func (m *Manager) log(format string, args ...any) error {
-	// 订阅日志沿用原有的本地文本格式。
+	// 订阅日志使用本地文本格式，便于直接查看。
 	file, err := os.OpenFile(m.Paths.ProfilesLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("open profile log: %w", err)
@@ -419,7 +419,7 @@ func (m *Manager) log(format string, args ...any) error {
 	return err
 }
 
-// nextID returns the next profile id after the current maximum.
+// nextID 返回当前最大订阅 id 之后的下一个 id。
 func nextID(profiles []Profile) int {
 	id := 0
 	for _, profile := range profiles {
@@ -430,7 +430,7 @@ func nextID(profiles []Profile) int {
 	return id + 1
 }
 
-// profileIndex returns the position of a profile id or -1 when absent.
+// profileIndex 返回订阅 id 在列表中的位置，不存在时返回 -1。
 func profileIndex(profiles []Profile, id int) int {
 	for index, profile := range profiles {
 		if profile.ID == id {
@@ -440,7 +440,7 @@ func profileIndex(profiles []Profile, id int) int {
 	return -1
 }
 
-// copyFile copies the complete contents of source to destination.
+// copyFile 把源文件的完整内容复制到目标路径。
 func copyFile(source, destination string) error {
 	data, err := os.ReadFile(source)
 	if err != nil {
@@ -449,7 +449,7 @@ func copyFile(source, destination string) error {
 	return os.WriteFile(destination, data, 0o644)
 }
 
-// normalize removes common subscription formatting issues and converts legacy encodings.
+// normalize 修正订阅内容的常见格式问题，并转换遗留编码。
 func normalize(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -474,13 +474,13 @@ func normalize(path string) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// isHTML reports whether a response contains a common HTML document marker.
+// isHTML 判断响应是否包含 HTML 文档标记。
 func isHTML(path string) bool {
 	data, err := os.ReadFile(path)
 	return err == nil && htmlPattern.Match(data)
 }
 
-// isNative reports whether a YAML file contains native proxy data.
+// isNative 判断 YAML 文件是否包含原生代理数据。
 func isNative(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -496,7 +496,7 @@ func isNative(path string) bool {
 	return proxies != nil && proxies.Kind == yaml.SequenceNode && len(proxies.Content) > 0 || providers != nil && providers.Kind == yaml.MappingNode && len(providers.Content) > 0
 }
 
-// hasNodes reports whether a YAML file contains at least one proxy or provider.
+// hasNodes 判断 YAML 文件是否包含至少一个节点或提供者。
 func hasNodes(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -512,7 +512,7 @@ func hasNodes(path string) bool {
 	return proxies != nil && proxies.Kind == yaml.SequenceNode && len(proxies.Content) > 0 || providers != nil && providers.Kind == yaml.MappingNode && len(providers.Content) > 0
 }
 
-// mappingValue returns one value from a YAML mapping.
+// mappingValue 从 YAML 映射中取出一个值。
 func mappingValue(mapping *yaml.Node, key string) *yaml.Node {
 	if mapping == nil || mapping.Kind != yaml.MappingNode {
 		return nil
@@ -525,7 +525,7 @@ func mappingValue(mapping *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
-// portUsed reports whether a local TCP port accepts connections.
+// portUsed 判断本地 TCP 端口是否已可连接。
 func portUsed(port int) bool {
 	connection, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), 100*time.Millisecond)
 	if err != nil {
@@ -535,12 +535,12 @@ func portUsed(port int) bool {
 	return true
 }
 
-// bytesTrimUTF8BOM removes a UTF-8 byte order mark.
+// bytesTrimUTF8BOM 去掉 UTF-8 BOM。
 func bytesTrimUTF8BOM(data []byte) []byte {
 	return bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf})
 }
 
-// utf8Valid reports whether data is valid UTF-8.
+// utf8Valid 判断数据是否为合法 UTF-8。
 func utf8Valid(data []byte) bool {
 	return utf8.Valid(data)
 }

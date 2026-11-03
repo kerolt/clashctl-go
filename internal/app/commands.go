@@ -20,7 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// tun handles TUN status queries and the on/off subcommands.
+// tun 处理 TUN 状态查询与 on/off 子命令。
 func (a *App) tun(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		enabled, err := a.tunStatus(ctx)
@@ -57,7 +57,7 @@ func (a *App) tun(ctx context.Context, args []string) error {
 	}
 }
 
-// tunStatus reports whether the configured TUN device exists.
+// tunStatus 报告配置的 TUN 设备是否存在。
 func (a *App) tunStatus(ctx context.Context) (bool, error) {
 	device, err := config.Value(a.Paths.RuntimeConfig, "tun", "device")
 	if err != nil {
@@ -66,7 +66,7 @@ func (a *App) tunStatus(ctx context.Context) (bool, error) {
 	return a.Service.TunStatus(ctx, device)
 }
 
-// tunOn enables TUN mode, rebuilds the runtime configuration, and starts it.
+// tunOn 开启 TUN 模式，重新生成运行配置并启动服务。
 func (a *App) tunOn(ctx context.Context) error {
 	// 先停止普通服务，再写入 TUN 配置。
 	active, err := a.tunStatus(ctx)
@@ -100,7 +100,7 @@ func (a *App) tunOn(ctx context.Context) error {
 		return nil
 	}
 	if a.Kernel == "mihomo" {
-		// mihomo 首次启用失败时，按原脚本关闭 auto-redirect 后重试。
+		// mihomo 首次启用失败时，关闭 auto-redirect 后重试。
 		if err := config.SetBoolPath(a.Paths.MixinConfig, []string{"tun", "auto-redirect"}, false); err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (a *App) tunOn(ctx context.Context) error {
 	return fmt.Errorf("tun 模式开启失败，请检查代理内核日志")
 }
 
-// tunOff disables TUN mode and restarts the normal proxy service.
+// tunOff 关闭 TUN 模式，并恢复普通代理服务。
 func (a *App) tunOff(ctx context.Context) error {
 	active, err := a.tunStatus(ctx)
 	if err != nil {
@@ -166,7 +166,7 @@ func (a *App) tunOff(ctx context.Context) error {
 	return fmt.Errorf("tun 模式关闭失败")
 }
 
-// mixin opens, displays, or applies the Mixin configuration.
+// mixin 查看、编辑或重新应用 Mixin 配置。
 func (a *App) mixin(ctx context.Context, args []string) error {
 	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Fprintf(a.Printer.Out, `
@@ -210,7 +210,7 @@ func (a *App) mixin(ctx context.Context, args []string) error {
 	return runInteractive(ctx, "less", path)
 }
 
-// secret displays or updates the Web control secret.
+// secret 查看或修改 Web 访问密钥。
 func (a *App) secret(ctx context.Context, args []string) error {
 	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Fprint(a.Printer.Out, `
@@ -243,7 +243,7 @@ func (a *App) secret(ctx context.Context, args []string) error {
 	return nil
 }
 
-// mergeAndRestart rebuilds the runtime configuration and restarts the matching service mode.
+// mergeAndRestart 重新生成运行配置，并按 TUN 状态重启服务。
 func (a *App) mergeAndRestart(ctx context.Context) error {
 	// 合并前记录 TUN 状态，合并后依据配置选择启动方式。
 	tunActive, err := a.tunStatus(ctx)
@@ -292,7 +292,7 @@ func (a *App) mergeAndRestart(ctx context.Context) error {
 	return a.Service.Start(ctx)
 }
 
-// ui starts the service when needed and prints Web control panel addresses.
+// ui 按需启动服务，并输出 Web 面板地址。
 func (a *App) ui(ctx context.Context, _ []string) error {
 	extIP, extPort, err := a.externalAddress(ctx)
 	if err != nil {
@@ -345,7 +345,7 @@ func (a *App) ui(ctx context.Context, _ []string) error {
 	return nil
 }
 
-// externalAddress reads and, when required, repairs the external controller address.
+// externalAddress 读取外部控制地址，必要时修复端口冲突。
 func (a *App) externalAddress(ctx context.Context) (string, int, error) {
 	address, err := config.Value(a.Paths.RuntimeConfig, "external-controller")
 	if err != nil {
@@ -386,12 +386,12 @@ func (a *App) externalAddress(ctx context.Context) (string, int, error) {
 	return extIP, extPort, nil
 }
 
-// log prints service logs using the detected service manager.
+// log 按服务管理器输出服务日志。
 func (a *App) log(ctx context.Context, args []string) error {
 	return a.Service.Log(ctx, a.Printer.Out, args...)
 }
 
-// upgrade requests a kernel upgrade through the local external controller.
+// upgrade 通过本地控制接口请求内核升级。
 func (a *App) upgrade(ctx context.Context, args []string) error {
 	channel := ""
 	verbose := false
@@ -464,7 +464,7 @@ func (a *App) upgrade(ctx context.Context, args []string) error {
 	return fmt.Errorf("内核升级失败，请检查网络或稍后重试")
 }
 
-// sub dispatches subscription management subcommands.
+// sub 分发订阅管理子命令。
 func (a *App) sub(ctx context.Context, args []string) error {
 	if len(args) == 0 || args[0] == "ls" || args[0] == "list" {
 		return a.subList()
@@ -487,7 +487,7 @@ func (a *App) sub(ctx context.Context, args []string) error {
 	}
 }
 
-// subHelp prints subscription command usage.
+// subHelp 输出订阅命令用法。
 func (a *App) subHelp() error {
 	fmt.Fprint(a.Printer.Out, `
 clashctl sub - 订阅管理工具
@@ -506,7 +506,7 @@ Commands:
 	return nil
 }
 
-// subList prints the stored subscription metadata.
+// subList 输出已保存的订阅元数据。
 func (a *App) subList() error {
 	metadata, err := a.Subscriptions.LoadMetadata()
 	if err != nil {
@@ -520,9 +520,9 @@ func (a *App) subList() error {
 	return err
 }
 
-// subAdd downloads, validates, and stores a subscription profile.
+// subAdd 下载、校验并保存一条订阅。
 func (a *App) subAdd(ctx context.Context, args []string) error {
-	// 解析订阅参数并保留原有的交互输入方式。
+	// 解析订阅参数，缺少链接时进入交互输入。
 	useAfter := false
 	sourceURL := ""
 	for _, arg := range args {
@@ -565,7 +565,7 @@ func (a *App) subAdd(ctx context.Context, args []string) error {
 	return nil
 }
 
-// subDelete removes an unused subscription profile by id.
+// subDelete 按 id 删除未使用的订阅。
 func (a *App) subDelete(args []string) error {
 	id, err := parseID(args)
 	if err != nil {
@@ -579,7 +579,7 @@ func (a *App) subDelete(args []string) error {
 	return nil
 }
 
-// subUse selects a subscription profile and applies it.
+// subUse 选择并应用一条订阅。
 func (a *App) subUse(ctx context.Context, args []string) error {
 	id, err := a.subscriptionID(args)
 	if err != nil {
@@ -588,7 +588,7 @@ func (a *App) subUse(ctx context.Context, args []string) error {
 	return a.useProfile(ctx, id)
 }
 
-// subscriptionID resolves a profile id from arguments or interactive input.
+// subscriptionID 从参数或交互输入中获取订阅 id。
 func (a *App) subscriptionID(args []string) (int, error) {
 	if len(args) > 0 {
 		return parseID(args)
@@ -611,7 +611,7 @@ func (a *App) subscriptionID(args []string) (int, error) {
 	return strconv.Atoi(strings.TrimSpace(value))
 }
 
-// useProfile copies a profile into the base configuration and activates it.
+// useProfile 把订阅配置应用到基础配置并使其生效。
 func (a *App) useProfile(ctx context.Context, id int) error {
 	metadata, err := a.Subscriptions.LoadMetadata()
 	if err != nil {
@@ -643,7 +643,7 @@ func (a *App) useProfile(ctx context.Context, id int) error {
 	return nil
 }
 
-// subUpdate downloads and validates an existing subscription profile.
+// subUpdate 下载并校验一条已存在的订阅。
 func (a *App) subUpdate(ctx context.Context, args []string) error {
 	// 先处理自动更新和转换选项，再确定目标订阅。
 	convert := false
@@ -690,7 +690,7 @@ func (a *App) subUpdate(ctx context.Context, args []string) error {
 	return nil
 }
 
-// enableAutoUpdate installs the existing clashctl cron schedule.
+// enableAutoUpdate 写入定时更新订阅的 cron 任务。
 func (a *App) enableAutoUpdate(ctx context.Context) error {
 	if _, err := exec.LookPath("crontab"); err != nil {
 		return fmt.Errorf("未检测到 crontab 命令，请先安装 cron 服务")
@@ -717,7 +717,7 @@ func (a *App) enableAutoUpdate(ctx context.Context) error {
 	return nil
 }
 
-// parseID parses exactly one subscription id.
+// parseID 解析唯一的订阅 id。
 func parseID(args []string) (int, error) {
 	if len(args) != 1 {
 		return 0, fmt.Errorf("需要一个订阅 id")
@@ -729,7 +729,7 @@ func parseID(args []string) (int, error) {
 	return id, nil
 }
 
-// runInteractive runs a terminal command with the current process streams.
+// runInteractive 用当前进程的标准流执行终端命令。
 func runInteractive(ctx context.Context, name string, args ...string) error {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Stdin = os.Stdin
@@ -738,7 +738,7 @@ func runInteractive(ctx context.Context, name string, args ...string) error {
 	return command.Run()
 }
 
-// commandOutputTo runs a command and sends both output streams to writer.
+// commandOutputTo 执行命令并把输出写入 writer。
 func commandOutputTo(ctx context.Context, writer io.Writer, name string, args ...string) error {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Stdout = writer
@@ -746,7 +746,7 @@ func commandOutputTo(ctx context.Context, writer io.Writer, name string, args ..
 	return command.Run()
 }
 
-// detectProxyPort repairs occupied proxy ports before starting the kernel.
+// detectProxyPort 在启动前修复被占用的代理端口。
 func (a *App) detectProxyPort(ctx context.Context) error {
 	// 服务未运行时检查每个代理端口，冲突端口写入 Mixin。
 	active, err := a.Service.IsActive(ctx)
@@ -790,7 +790,7 @@ func (a *App) detectProxyPort(ctx context.Context) error {
 	return config.Merge(ctx, a.Paths, a.KernelPath)
 }
 
-// portUsed reports whether a TCP port is unavailable for binding.
+// portUsed 判断 TCP 端口是否已被占用。
 func portUsed(port int) bool {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
@@ -800,7 +800,7 @@ func portUsed(port int) bool {
 	return false
 }
 
-// randomPort selects an available non-privileged TCP port.
+// randomPort 选择一个可用的非特权 TCP 端口。
 func randomPort() (int, error) {
 	for attempt := 0; attempt < 100; attempt++ {
 		listener, err := net.Listen("tcp", ":0")

@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TestBuildRuntime verifies the special Mixin merge rules.
+// TestBuildRuntime 核验 Mixin 的特殊合并规则。
 func TestBuildRuntime(t *testing.T) {
 	base := parseTestYAML(t, `
 keep: base
@@ -96,7 +96,7 @@ proxy-groups:
 	}
 }
 
-// TestBuildRuntimeRejectsNonMappings verifies invalid YAML roots are rejected.
+// TestBuildRuntimeRejectsNonMappings 核验非映射根节点被拒绝。
 func TestBuildRuntimeRejectsNonMappings(t *testing.T) {
 	_, err := BuildRuntime(parseTestYAML(t, "[]"), parseTestYAML(t, "{}"))
 	if err == nil {
@@ -104,7 +104,7 @@ func TestBuildRuntimeRejectsNonMappings(t *testing.T) {
 	}
 }
 
-// parseTestYAML parses one YAML fixture for merge tests.
+// parseTestYAML 解析合并测试使用的 YAML 内容。
 func parseTestYAML(t *testing.T, value string) *yaml.Node {
 	t.Helper()
 	var document yaml.Node
@@ -114,7 +114,7 @@ func parseTestYAML(t *testing.T, value string) *yaml.Node {
 	return document.Content[0]
 }
 
-// scalarValues joins scalar sequence values for test assertions.
+// scalarValues 把标量序列拼接为测试断言用的字符串。
 func scalarValues(sequence *yaml.Node) string {
 	values := make([]string, 0, len(sequence.Content))
 	for _, item := range sequence.Content {
@@ -123,7 +123,7 @@ func scalarValues(sequence *yaml.Node) string {
 	return joinTestValues(values)
 }
 
-// namedValues joins name fields from mapping sequence items.
+// namedValues 把序列元素的 name 字段拼接为字符串。
 func namedValues(sequence *yaml.Node) string {
 	values := make([]string, 0, len(sequence.Content))
 	for _, item := range sequence.Content {
@@ -132,7 +132,7 @@ func namedValues(sequence *yaml.Node) string {
 	return joinTestValues(values)
 }
 
-// joinTestValues joins test values with commas.
+// joinTestValues 用逗号拼接测试值。
 func joinTestValues(values []string) string {
 	result := ""
 	for index, value := range values {

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Run executes a command with the current process streams.
+// Run 用当前进程的标准流执行命令。
 func Run(ctx context.Context, name string, args ...string) error {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Stdin = os.Stdin
@@ -20,7 +20,7 @@ func Run(ctx context.Context, name string, args ...string) error {
 	return command.Run()
 }
 
-// Output executes a command and returns its combined output.
+// Output 执行命令并返回合并后的输出。
 func Output(ctx context.Context, name string, args ...string) ([]byte, error) {
 	command := exec.CommandContext(ctx, name, args...)
 	result, err := command.CombinedOutput()
@@ -34,7 +34,7 @@ func Output(ctx context.Context, name string, args ...string) ([]byte, error) {
 	return result, nil
 }
 
-// StartDetached starts a command with the supplied output writers.
+// StartDetached 启动命令，并写入指定的输出流。
 func StartDetached(name string, args []string, stdout, stderr io.Writer) (*exec.Cmd, error) {
 	command := exec.Command(name, args...)
 	command.Stdin = nil
@@ -46,7 +46,7 @@ func StartDetached(name string, args []string, stdout, stderr io.Writer) (*exec.
 	return command, nil
 }
 
-// IsRunning reports whether a process command line contains executable.
+// IsRunning 报告是否存在命令行包含指定路径的进程。
 func IsRunning(ctx context.Context, executable string) (bool, error) {
 	command := exec.CommandContext(ctx, "pgrep", "-fa", executable)
 	output, err := command.Output()
@@ -59,7 +59,7 @@ func IsRunning(ctx context.Context, executable string) (bool, error) {
 	return strings.Contains(string(output), executable), nil
 }
 
-// TerminateByName sends TERM and then KILL to processes with an exact name.
+// TerminateByName 向名称完全匹配的进程依次发送 TERM 与 KILL。
 func TerminateByName(ctx context.Context, name string, wait time.Duration) error {
 	if err := exec.CommandContext(ctx, "pkill", "-TERM", "-x", name).Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); !ok || exitError.ExitCode() != 1 {

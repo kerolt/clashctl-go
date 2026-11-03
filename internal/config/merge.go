@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BuildRuntime applies Mixin rules to a base configuration in memory.
+// BuildRuntime 在内存中把 Mixin 规则应用到基础配置。
 func BuildRuntime(base, mixin *yaml.Node) (*yaml.Node, error) {
 	// 复制输入节点，避免修改调用方持有的 YAML 树。
 	base = cloneNode(base)
@@ -64,7 +64,7 @@ func BuildRuntime(base, mixin *yaml.Node) (*yaml.Node, error) {
 	return base, nil
 }
 
-// Merge writes and validates the runtime configuration, restoring the previous file on validation failure.
+// Merge 生成并校验运行配置，校验失败时恢复上一份文件。
 func Merge(ctx context.Context, paths Paths, kernelPath string) error {
 	// 读取并构建新的运行配置。
 	base, err := readNode(paths.BaseConfig)
@@ -102,7 +102,7 @@ func Merge(ctx context.Context, paths Paths, kernelPath string) error {
 	return nil
 }
 
-// Validate asks the selected kernel to validate one configuration file.
+// Validate 调用内核校验一个配置文件。
 func Validate(ctx context.Context, kernelPath, configPath string) error {
 	command := exec.CommandContext(
 		ctx,
@@ -124,7 +124,7 @@ func Validate(ctx context.Context, kernelPath, configPath string) error {
 	return nil
 }
 
-// readNode reads one YAML document and returns its root node.
+// readNode 读取一个 YAML 文档并返回根节点。
 func readNode(path string) (*yaml.Node, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -140,7 +140,7 @@ func readNode(path string) (*yaml.Node, error) {
 	return document.Content[0], nil
 }
 
-// writeNode encodes one YAML root node into a file.
+// writeNode 把一个 YAML 根节点编码后写入文件。
 func writeNode(path string, node *yaml.Node) error {
 	var buffer bytes.Buffer
 	document := yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{node}}
@@ -155,7 +155,7 @@ func writeNode(path string, node *yaml.Node) error {
 	return os.WriteFile(path, buffer.Bytes(), 0o644)
 }
 
-// cloneNode makes a complete copy of a YAML node tree.
+// cloneNode 完整复制一棵 YAML 节点树。
 func cloneNode(node *yaml.Node) *yaml.Node {
 	if node == nil {
 		return nil
@@ -168,7 +168,7 @@ func cloneNode(node *yaml.Node) *yaml.Node {
 	return &copy
 }
 
-// mappingValue returns the value for key from a YAML mapping.
+// mappingValue 从 YAML 映射中取出指定键的值。
 func mappingValue(mapping *yaml.Node, key string) *yaml.Node {
 	if mapping == nil || mapping.Kind != yaml.MappingNode {
 		return nil
@@ -181,7 +181,7 @@ func mappingValue(mapping *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
-// setMappingValue inserts or replaces one YAML mapping value.
+// setMappingValue 插入或覆盖一个 YAML 映射值。
 func setMappingValue(mapping *yaml.Node, key string, value *yaml.Node) {
 	if mapping == nil || mapping.Kind != yaml.MappingNode {
 		return
@@ -199,7 +199,7 @@ func setMappingValue(mapping *yaml.Node, key string, value *yaml.Node) {
 	)
 }
 
-// deleteMappingKey removes one key from a YAML mapping.
+// deleteMappingKey 从 YAML 映射中删除一个键。
 func deleteMappingKey(mapping *yaml.Node, key string) {
 	if mapping == nil || mapping.Kind != yaml.MappingNode {
 		return
@@ -214,7 +214,7 @@ func deleteMappingKey(mapping *yaml.Node, key string) {
 	mapping.Content = content
 }
 
-// mergeMapping recursively merges mapping values and replaces scalar or sequence values.
+// mergeMapping 递归合并映射，标量与序列直接覆盖。
 func mergeMapping(destination, source *yaml.Node) {
 	for index := 0; index+1 < len(source.Content); index += 2 {
 		key := source.Content[index].Value
@@ -228,7 +228,7 @@ func mergeMapping(destination, source *yaml.Node) {
 	}
 }
 
-// concatSequences concatenates YAML sequence nodes while cloning their items.
+// concatSequences 拼接 YAML 序列，并复制其中的元素。
 func concatSequences(sequences ...*yaml.Node) *yaml.Node {
 	result := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	for _, sequence := range sequences {
@@ -242,7 +242,7 @@ func concatSequences(sequences ...*yaml.Node) *yaml.Node {
 	return result
 }
 
-// mergeNamedSequences applies named overrides between prepend and append items.
+// mergeNamedSequences 在 prepend 与 append 之间按名称应用覆盖。
 func mergeNamedSequences(prepend, base, overrides, appendItems *yaml.Node) *yaml.Node {
 	result := concatSequences(prepend)
 	if base != nil && base.Kind == yaml.SequenceNode {
@@ -254,7 +254,7 @@ func mergeNamedSequences(prepend, base, overrides, appendItems *yaml.Node) *yaml
 	return result
 }
 
-// findOverride finds a named replacement for one YAML sequence item.
+// findOverride 按名称查找序列元素对应的替换项。
 func findOverride(item, overrides *yaml.Node) *yaml.Node {
 	name := scalarValue(mappingValue(item, "name"))
 	if name == "" || overrides == nil || overrides.Kind != yaml.SequenceNode {
@@ -268,7 +268,7 @@ func findOverride(item, overrides *yaml.Node) *yaml.Node {
 	return item
 }
 
-// defaultGroupName selects the preferred proxy group for rule substitution.
+// defaultGroupName 选择用于替换规则占位符的默认代理组。
 func defaultGroupName(groups *yaml.Node) string {
 	if groups == nil || groups.Kind != yaml.SequenceNode {
 		return ""
@@ -289,7 +289,7 @@ func defaultGroupName(groups *yaml.Node) string {
 	return firstSelect
 }
 
-// replaceFirst replaces the first matching string in a YAML node tree.
+// replaceFirst 在 YAML 节点树中替换第一处匹配的字符串。
 func replaceFirst(node *yaml.Node, old, new string) bool {
 	if node == nil {
 		return false
@@ -306,7 +306,7 @@ func replaceFirst(node *yaml.Node, old, new string) bool {
 	return false
 }
 
-// injectProxyGroups appends configured proxy names to matching groups without duplicates.
+// injectProxyGroups 向匹配的代理组追加节点，并去除重复项。
 func injectProxyGroups(runtime, inject *yaml.Node) {
 	groups := mappingValue(runtime, "proxy-groups")
 	if groups == nil || groups.Kind != yaml.SequenceNode || inject == nil || inject.Kind != yaml.MappingNode {
@@ -323,7 +323,7 @@ func injectProxyGroups(runtime, inject *yaml.Node) {
 	}
 }
 
-// uniqueSequence removes duplicate YAML sequence items while preserving order.
+// uniqueSequence 按顺序去重 YAML 序列。
 func uniqueSequence(sequence *yaml.Node) *yaml.Node {
 	result := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	seen := make(map[string]struct{})
@@ -338,14 +338,14 @@ func uniqueSequence(sequence *yaml.Node) *yaml.Node {
 	return result
 }
 
-// nodeKey creates a serialized identity for one YAML node.
+// nodeKey 生成单个 YAML 节点的序列化标识。
 func nodeKey(node *yaml.Node) string {
 	var buffer bytes.Buffer
 	_ = yaml.NewEncoder(&buffer).Encode(node)
 	return buffer.String()
 }
 
-// scalarValue returns the value of a scalar YAML node.
+// scalarValue 返回标量 YAML 节点的值。
 func scalarValue(node *yaml.Node) string {
 	if node == nil || node.Kind != yaml.ScalarNode {
 		return ""
@@ -353,7 +353,7 @@ func scalarValue(node *yaml.Node) string {
 	return node.Value
 }
 
-// directory returns the parent directory portion of a path.
+// directory 返回路径的父目录部分。
 func directory(path string) string {
 	index := strings.LastIndexByte(path, os.PathSeparator)
 	if index < 0 {

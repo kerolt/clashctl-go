@@ -257,7 +257,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 		rest = remaining[index:]
 	}
 
-	// 位置参数沿用原脚本写法：内核名称在前，订阅链接在后。
+	// 位置参数：内核名称在前，订阅链接在后。
 	for _, arg := range positionals {
 		switch {
 		case arg == "mihomo" || arg == "clash":

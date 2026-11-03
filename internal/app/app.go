@@ -18,7 +18,7 @@ import (
 	"github.com/nelvko/clashctl-go/internal/subscription"
 )
 
-// App contains the command dependencies and terminal I/O used by clashctl.
+// App 保存命令所需的依赖与终端输入输出。
 type App struct {
 	Paths         config.Paths
 	Kernel        string
@@ -30,7 +30,7 @@ type App struct {
 	ShellOutput   bool
 }
 
-// New constructs an App from the current clashctl environment.
+// New 按当前环境构造 App。
 func New(out, errOut io.Writer, input io.Reader) (*App, error) {
 	// 读取安装位置和内核名称。
 	kernel := config.KernelFromEnvironment()
@@ -70,7 +70,7 @@ func New(out, errOut io.Writer, input io.Reader) (*App, error) {
 	}, nil
 }
 
-// Run dispatches one clashctl command and returns its execution error.
+// Run 分发一条 clashctl 命令并返回执行错误。
 func (a *App) Run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return a.help()
@@ -119,9 +119,9 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	}
 }
 
-// help prints the top-level command usage.
+// help 输出命令总览。
 func (a *App) help() error {
-	fmt.Fprintln(a.Printer.Out, `
+	fmt.Fprint(a.Printer.Out, `
 Usage:
   clashctl COMMAND [OPTIONS]
 
@@ -140,12 +140,11 @@ Commands:
 
 Global Options:
   -h, --help            显示帮助信息
-
-For more help on how to use clashctl, head to https://github.com/nelvko/clash-for-linux-install`)
+`)
 	return nil
 }
 
-// on starts the proxy service and optionally emits terminal proxy settings.
+// on 启动代理服务，并按需输出终端代理设置。
 func (a *App) on(ctx context.Context, args []string) error {
 	serviceOnly, envOnly, help := parseModeArgs(args)
 	if help {
@@ -208,7 +207,7 @@ Options:
 	return nil
 }
 
-// off stops the proxy service and optionally clears terminal proxy settings.
+// off 停止代理服务，并按需清除终端代理设置。
 func (a *App) off(ctx context.Context, args []string) error {
 	serviceOnly, envOnly, help := parseModeArgs(args)
 	if help {
@@ -242,7 +241,7 @@ Options:
 	return nil
 }
 
-// stopService stops the managed service and handles a remaining TUN process.
+// stopService 停止受管服务，并处理残留的 TUN 进程。
 func (a *App) stopService(ctx context.Context) error {
 	active, err := a.Service.IsActive(ctx)
 	if err != nil {
@@ -279,7 +278,7 @@ func (a *App) stopService(ctx context.Context) error {
 	return nil
 }
 
-// status prints the service status and returns its active-state result.
+// status 输出服务状态，并返回运行状态结果。
 func (a *App) status(ctx context.Context, args []string) error {
 	statusErr := a.Service.Status(ctx, a.Printer.Out, args...)
 	active, err := a.Service.IsActive(ctx)
@@ -292,7 +291,7 @@ func (a *App) status(ctx context.Context, args []string) error {
 	return statusErr
 }
 
-// writeProxyEnv writes shell export statements when shell output is enabled.
+// writeProxyEnv 在 shell 输出模式下生成导出语句。
 func (a *App) writeProxyEnv() error {
 	// 读取端口、认证信息和绑定地址。
 	mixedPort, err := config.Value(a.Paths.RuntimeConfig, "mixed-port")
@@ -343,7 +342,7 @@ func (a *App) writeProxyEnv() error {
 	return nil
 }
 
-// writeProxyUnset writes shell unset statements when shell output is enabled.
+// writeProxyUnset 在 shell 输出模式下生成清除语句。
 func (a *App) writeProxyUnset() error {
 	for _, key := range []string{"http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"} {
 		if a.ShellOutput {
@@ -353,7 +352,7 @@ func (a *App) writeProxyUnset() error {
 	return nil
 }
 
-// bindAddress resolves the address used in terminal proxy URLs.
+// bindAddress 解析终端代理地址中使用的监听地址。
 func (a *App) bindAddress() (string, error) {
 	bindAddress, err := config.Value(a.Paths.RuntimeConfig, "bind-address")
 	if err != nil {
@@ -372,7 +371,7 @@ func (a *App) bindAddress() (string, error) {
 	return bindAddress, nil
 }
 
-// localIP finds the local address used for LAN proxy access.
+// localIP 查找供局域网访问使用的本地地址。
 func localIP() string {
 	connection, err := net.Dial("udp", "1.1.1.1:80")
 	if err == nil {
@@ -382,12 +381,12 @@ func localIP() string {
 	return "127.0.0.1"
 }
 
-// shellQuote quotes a value for use in a POSIX shell assignment.
+// shellQuote 为 POSIX shell 赋值语句引用一个值。
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
-// parseModeArgs parses the shared service-only, environment-only, and help flags.
+// parseModeArgs 解析服务专用、环境专用与帮助三个共享选项。
 func parseModeArgs(args []string) (serviceOnly, envOnly, help bool) {
 	for _, arg := range args {
 		switch arg {
@@ -402,7 +401,7 @@ func parseModeArgs(args []string) (serviceOnly, envOnly, help bool) {
 	return
 }
 
-// loadDotEnv loads simple KEY=VALUE entries without evaluating shell code.
+// loadDotEnv 读取简单的键值对，不执行任何 shell 代码。
 func loadDotEnv(home string) {
 	data, err := os.ReadFile(filepath.Join(home, ".env"))
 	if err != nil {

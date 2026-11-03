@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Value reads one scalar value through a sequence of mapping keys.
+// Value 按映射键逐层读取一个标量值。
 func Value(path string, keys ...string) (string, error) {
 	node, err := readNode(path)
 	if err != nil {
@@ -23,7 +23,7 @@ func Value(path string, keys ...string) (string, error) {
 	return scalarValue(node), nil
 }
 
-// Values reads scalar values from a YAML sequence selected by mapping keys.
+// Values 按映射键读取一个 YAML 序列中的全部标量值。
 func Values(path string, keys ...string) ([]string, error) {
 	node, err := readNode(path)
 	if err != nil {
@@ -45,7 +45,7 @@ func Values(path string, keys ...string) ([]string, error) {
 	return values, nil
 }
 
-// Bool reads and parses a boolean configuration value.
+// Bool 读取并解析布尔配置值。
 func Bool(path string, keys ...string) (bool, error) {
 	value, err := Value(path, keys...)
 	if err != nil {
@@ -54,7 +54,7 @@ func Bool(path string, keys ...string) (bool, error) {
 	return strconv.ParseBool(value)
 }
 
-// SetString updates one top-level string configuration value.
+// SetString 更新一个顶层字符串配置值。
 func SetString(path, key, value string) error {
 	node, err := readNode(path)
 	if err != nil {
@@ -67,12 +67,12 @@ func SetString(path, key, value string) error {
 	return writeNode(path, node)
 }
 
-// SetBool updates one top-level boolean configuration value.
+// SetBool 更新一个顶层布尔配置值。
 func SetBool(path, key string, value bool) error {
 	return SetBoolPath(path, []string{key}, value)
 }
 
-// SetBoolPath updates a boolean value selected by nested mapping keys.
+// SetBoolPath 按嵌套映射键更新布尔值。
 func SetBoolPath(path string, keys []string, value bool) error {
 	if len(keys) == 0 {
 		return fmt.Errorf("configuration path is empty")
@@ -99,7 +99,7 @@ func SetBoolPath(path string, keys []string, value bool) error {
 	return writeNode(path, node)
 }
 
-// SetInt updates an integer value selected by nested mapping keys.
+// SetInt 按嵌套映射键更新整数值。
 func SetInt(path string, keys []string, value int) error {
 	if len(keys) == 0 {
 		return fmt.Errorf("configuration path is empty")
@@ -126,17 +126,17 @@ func SetInt(path string, keys []string, value int) error {
 	return writeNode(path, node)
 }
 
-// Read reads one YAML document root node from path.
+// Read 读取一个 YAML 文档根节点。
 func Read(path string) (*yaml.Node, error) {
 	return readNode(path)
 }
 
-// Write writes one YAML document root node to path.
+// Write 把一个 YAML 文档根节点写入文件。
 func Write(path string, node *yaml.Node) error {
 	return writeNode(path, node)
 }
 
-// Copy copies a configuration file to destination.
+// Copy 复制配置文件到目标路径。
 func Copy(path, destination string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {

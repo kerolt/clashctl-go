@@ -16,7 +16,7 @@ import (
 	"github.com/nelvko/clashctl-go/internal/process"
 )
 
-// Manager stores the detected service manager and mihomo paths.
+// Manager 保存识别到的服务管理器与内核路径。
 type Manager struct {
 	Paths        config.Paths
 	Kernel       string
@@ -28,7 +28,7 @@ type Manager struct {
 	Command func(ctx context.Context, name string, args ...string) error
 }
 
-// New constructs a service Manager and detects the available service manager.
+// New 构造服务管理器并识别当前可用的运行方式。
 func New(paths config.Paths, kernel string) *Manager {
 	manager := &Manager{
 		Paths:      paths,
@@ -40,7 +40,7 @@ func New(paths config.Paths, kernel string) *Manager {
 	return manager
 }
 
-// detect selects the service manager and log path for the current environment.
+// detect 根据当前环境选择服务管理器与日志路径。
 func (m *Manager) detect() {
 	// 先判断系统级 init，再检查当前用户的 systemd 服务。
 	initType := "nohup"
@@ -85,7 +85,7 @@ func (m *Manager) detect() {
 	}
 }
 
-// userSystemdAvailable reports whether a user service unit can be controlled.
+// userSystemdAvailable 报告用户级服务单元是否可用。
 func userSystemdAvailable(kernel string) bool {
 	if _, err := exec.LookPath("systemctl"); err != nil {
 		return false
@@ -105,7 +105,7 @@ func userSystemdAvailable(kernel string) bool {
 	return err == nil
 }
 
-// systemctl runs systemctl with the detected user scope when required.
+// systemctl 按需要附加用户级作用域执行 systemctl。
 func (m *Manager) systemctl(ctx context.Context, args ...string) error {
 	commandArgs := make([]string, 0, len(args)+1)
 	if m.SystemdScope != "" {
@@ -115,7 +115,7 @@ func (m *Manager) systemctl(ctx context.Context, args ...string) error {
 	return process.Run(ctx, "systemctl", commandArgs...)
 }
 
-// systemctlOutput runs systemctl and sends both output streams to writer.
+// systemctlOutput 执行 systemctl 并把输出写入 writer。
 func (m *Manager) systemctlOutput(ctx context.Context, writer io.Writer, args ...string) error {
 	commandArgs := make([]string, 0, len(args)+1)
 	if m.SystemdScope != "" {
@@ -128,7 +128,7 @@ func (m *Manager) systemctlOutput(ctx context.Context, writer io.Writer, args ..
 	return command.Run()
 }
 
-// Start starts mihomo through the detected service manager.
+// Start 通过服务管理器启动内核。
 func (m *Manager) Start(ctx context.Context) error {
 	// 服务管理器负责托管的进程由对应命令启动。
 	switch m.Manager {
@@ -159,7 +159,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 }
 
-// SudoStart starts mihomo with elevated privileges for TUN mode.
+// SudoStart 以提权方式启动内核，供 TUN 模式使用。
 func (m *Manager) SudoStart(ctx context.Context) error {
 	if os.Geteuid() == 0 {
 		return m.Start(ctx)
@@ -190,7 +190,7 @@ func (m *Manager) SudoStart(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops mihomo through the detected service manager.
+// Stop 通过服务管理器停止内核。
 func (m *Manager) Stop(ctx context.Context) error {
 	switch m.Manager {
 	case "systemd":
@@ -206,7 +206,7 @@ func (m *Manager) Stop(ctx context.Context) error {
 	}
 }
 
-// SudoStop stops a privileged mihomo process used by TUN mode.
+// SudoStop 停止 TUN 模式下的提权内核进程。
 func (m *Manager) SudoStop(ctx context.Context) error {
 	if os.Geteuid() == 0 {
 		return m.Stop(ctx)
@@ -227,7 +227,7 @@ func (m *Manager) SudoStop(ctx context.Context) error {
 	return nil
 }
 
-// Restart restarts mihomo through the detected service manager.
+// Restart 通过服务管理器重启内核。
 func (m *Manager) Restart(ctx context.Context) error {
 	switch m.Manager {
 	case "systemd":
@@ -249,7 +249,7 @@ func (m *Manager) Restart(ctx context.Context) error {
 	}
 }
 
-// IsActive reports whether mihomo is currently active.
+// IsActive 报告内核当前是否处于运行状态。
 func (m *Manager) IsActive(ctx context.Context) (bool, error) {
 	// 用户级 systemd 还需要兼容 sudo 启动的未托管进程。
 	switch m.Manager {
@@ -277,7 +277,7 @@ func (m *Manager) IsActive(ctx context.Context) (bool, error) {
 	}
 }
 
-// commandActive converts a service status command result to a boolean.
+// commandActive 把服务状态命令的结果转换为布尔值。
 func commandActive(ctx context.Context, name string, args ...string) (bool, error) {
 	if err := exec.CommandContext(ctx, name, args...).Run(); err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
@@ -288,7 +288,7 @@ func commandActive(ctx context.Context, name string, args ...string) (bool, erro
 	return true, nil
 }
 
-// Status prints service status details and returns the command result.
+// Status 输出服务状态详情并返回命令结果。
 func (m *Manager) Status(ctx context.Context, writer io.Writer, args ...string) error {
 	if m.Manager == "systemd" && m.SystemdScope != "" {
 		statusErr := m.systemctlOutput(ctx, writer, append([]string{"status", m.Kernel}, args...)...)
@@ -318,7 +318,7 @@ func (m *Manager) Status(ctx context.Context, writer io.Writer, args ...string) 
 	}
 }
 
-// commandOutput runs a command and writes both output streams to writer.
+// commandOutput 执行命令并把输出写入 writer。
 func commandOutput(ctx context.Context, writer io.Writer, name string, args ...string) error {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Stdout = writer
@@ -326,7 +326,7 @@ func commandOutput(ctx context.Context, writer io.Writer, name string, args ...s
 	return command.Run()
 }
 
-// journalctlOutput runs journalctl with the detected user scope when required.
+// journalctlOutput 按需要附加用户级作用域执行 journalctl。
 func (m *Manager) journalctlOutput(ctx context.Context, writer io.Writer, args ...string) error {
 	commandArgs := make([]string, 0, len(args)+1)
 	if m.SystemdScope != "" {
@@ -339,7 +339,7 @@ func (m *Manager) journalctlOutput(ctx context.Context, writer io.Writer, args .
 	return command.Run()
 }
 
-// Log prints stored service logs.
+// Log 输出已保存的服务日志。
 func (m *Manager) Log(ctx context.Context, writer io.Writer, args ...string) error {
 	if m.Manager == "systemd" {
 		return m.journalctlOutput(ctx, writer, append([]string{"-u", m.Kernel}, args...)...)
@@ -350,7 +350,7 @@ func (m *Manager) Log(ctx context.Context, writer io.Writer, args ...string) err
 	return commandOutput(ctx, writer, "cat", m.LogPath)
 }
 
-// FollowLog follows new service log entries until the context ends.
+// FollowLog 持续跟随新日志，直到上下文结束。
 func (m *Manager) FollowLog(ctx context.Context, writer io.Writer) error {
 	if m.Manager == "systemd" {
 		return m.journalctlOutput(ctx, writer, "-u", m.Kernel, "-q", "-f", "-n", "0")
@@ -358,7 +358,7 @@ func (m *Manager) FollowLog(ctx context.Context, writer io.Writer) error {
 	return commandOutput(ctx, writer, "tail", "-f", "-n", "0", m.LogPath)
 }
 
-// TunStatus reports whether the configured TUN device exists.
+// TunStatus 报告配置的 TUN 设备是否存在。
 func (m *Manager) TunStatus(ctx context.Context, device string) (bool, error) {
 	if device == "" {
 		device = "Meta"

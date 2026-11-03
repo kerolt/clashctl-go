@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-// Paths contains the files and binaries used by one clashctl installation.
+// Paths 保存一次安装涉及的目录与二进制路径。
 type Paths struct {
 	Home             string
 	Resources        string
@@ -27,7 +27,7 @@ type Paths struct {
 	ProfilesLog      string
 }
 
-// NewPaths builds all installation paths below home for the selected kernel.
+// NewPaths 按安装目录和内核名构造全部路径。
 func NewPaths(home string, kernel string) Paths {
 	resources := filepath.Join(home, "resources")
 	bin := filepath.Join(home, "bin")
@@ -78,7 +78,7 @@ func defaultHome() (string, error) {
 	return filepath.Join(currentUser.HomeDir, ".local", "share", "clashctl"), nil
 }
 
-// KernelFromEnvironment returns the configured kernel name or mihomo by default.
+// KernelFromEnvironment 返回配置的内核名，默认 mihomo。
 func KernelFromEnvironment() string {
 	if kernel := os.Getenv("CLASHCTL_KERNEL"); kernel != "" {
 		return kernel

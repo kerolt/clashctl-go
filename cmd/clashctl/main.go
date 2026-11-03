@@ -10,7 +10,7 @@ import (
 	"github.com/nelvko/clashctl-go/internal/app"
 )
 
-// main starts the clashctl command and propagates terminal cancellation.
+// main 启动 clashctl 命令，并把终端信号传递给上下文。
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
