@@ -24,6 +24,8 @@ type Manager struct {
 	Manager      string
 	SystemdScope string
 	LogPath      string
+	// Command 执行服务管理命令，测试可以替换。
+	Command func(ctx context.Context, name string, args ...string) error
 }
 
 // New constructs a service Manager and detects the available service manager.
@@ -32,6 +34,7 @@ func New(paths config.Paths, kernel string) *Manager {
 		Paths:      paths,
 		Kernel:     kernel,
 		KernelPath: paths.KernelPath,
+		Command:    process.Run,
 	}
 	manager.detect()
 	return manager

@@ -102,6 +102,8 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		return a.secret(ctx, arguments)
 	case "log":
 		return a.log(ctx, arguments)
+	case "install":
+		return a.install(ctx, arguments)
 	case "upgrade":
 		return a.upgrade(ctx, arguments)
 	case "__env-on":
@@ -133,6 +135,7 @@ Commands:
   mixin                 Mixin 配置
   secret                Web 密钥
   log                   查看日志
+  install               首次安装
   upgrade               升级内核
 
 Global Options:

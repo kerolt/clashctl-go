@@ -52,17 +52,30 @@ func NewPaths(home string, kernel string) Paths {
 	}
 }
 
-// FromEnvironment resolves the installation home from CLASHCTL_HOME or the user home.
+// FromEnvironment 解析安装目录：优先 CLASHCTL_HOME，其次 XDG 数据目录下的 clashctl。
 func FromEnvironment(kernel string) (Paths, error) {
-	home := os.Getenv("CLASHCTL_HOME")
-	if home == "" {
-		currentUser, err := user.Current()
-		if err != nil {
-			return Paths{}, fmt.Errorf("find current user: %w", err)
-		}
-		home = filepath.Join(currentUser.HomeDir, ".local", "bin", "clashctl")
+	if home := os.Getenv("CLASHCTL_HOME"); home != "" {
+		return NewPaths(home, kernel), nil
+	}
+
+	home, err := defaultHome()
+	if err != nil {
+		return Paths{}, err
 	}
 	return NewPaths(home, kernel), nil
+}
+
+// defaultHome 返回默认安装目录：$XDG_DATA_HOME/clashctl 或 ~/.local/share/clashctl。
+func defaultHome() (string, error) {
+	if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
+		return filepath.Join(dataHome, "clashctl"), nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("find current user: %w", err)
+	}
+	return filepath.Join(currentUser.HomeDir, ".local", "share", "clashctl"), nil
 }
 
 // KernelFromEnvironment returns the configured kernel name or mihomo by default.
