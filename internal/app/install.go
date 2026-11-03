@@ -23,6 +23,7 @@ import (
 const (
 	defaultSubconverterRepo = "asdlokj1qpi233/subconverter"
 	defaultDownloadTimeout  = 60 * time.Second
+	defaultUIDistURL        = "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 	subconverterName        = "subconverter"
 )
 
@@ -39,6 +40,7 @@ type installOptions struct {
 	VersionSubconverter string
 	SubconverterRepo    string
 	SubUA               string
+	UIDist              string
 	SkipUI              bool
 	NoService           bool
 	NoStart             bool
@@ -92,12 +94,9 @@ func (a *App) install(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	uiArchive, err := findArchive(options.AssetsDir, "dist")
+	uiArchive, err := a.prepareUIArchive(ctx, client, options)
 	if err != nil {
-		uiArchive, err = findArchive(options.ResourcesDir, "dist")
-	}
-	if err != nil && !options.SkipUI {
-		return fmt.Errorf("未找到 Web UI 压缩包 dist.zip，请放入 %s 或使用 --skip-ui", options.AssetsDir)
+		return err
 	}
 
 	if err := os.MkdirAll(a.Paths.Resources, 0o755); err != nil {
@@ -206,6 +205,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 		VersionSubconverter: envFile["VERSION_SUBCONVERTER"],
 		SubconverterRepo:    firstNonEmpty(envFile["SUBCONVERTER_REPO"], defaultSubconverterRepo),
 		SubUA:               firstNonEmpty(envFile["CLASHCTL_SUB_UA"], "mihomo"),
+		UIDist:              envFile["ZIP_UI"],
 	}
 
 	if value := envFile["CLASHCTL_DOWNLOAD_TIMEOUT"]; value != "" {
@@ -228,6 +228,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 	flags.StringVar(&options.VersionSubconverter, "version-subconverter", options.VersionSubconverter, "subconverter 版本号")
 	flags.StringVar(&options.SubconverterRepo, "subconverter-repo", options.SubconverterRepo, "subconverter 仓库")
 	flags.StringVar(&options.SubUA, "sub-ua", options.SubUA, "订阅下载 User-Agent")
+	flags.StringVar(&options.UIDist, "ui-dist", options.UIDist, "Web UI 压缩包路径或下载地址")
 	flags.BoolVar(&options.SkipUI, "skip-ui", false, "不安装 Web UI")
 	flags.BoolVar(&options.NoService, "no-service", false, "不注册服务单元")
 	flags.BoolVar(&options.NoStart, "no-start", false, "只安装不启动")
@@ -363,7 +364,7 @@ func (a *App) prepareKernel(
 	if err != nil {
 		return "", err
 	}
-	return a.downloadArchive(ctx, client, options, address)
+	return a.downloadArchive(ctx, client, options, address, install.ValidateGzip)
 }
 
 // prepareSubconverter 确保 subconverter 压缩包可用，缺失时下载。
@@ -394,7 +395,49 @@ func (a *App) prepareSubconverter(
 	if err != nil {
 		return "", err
 	}
-	return a.downloadArchive(ctx, client, options, address)
+	return a.downloadArchive(ctx, client, options, address, install.ValidateGzip)
+}
+
+// prepareUIArchive 查找或下载 Web UI 压缩包，跳过安装时返回空路径。
+func (a *App) prepareUIArchive(
+	ctx context.Context,
+	client *http.Client,
+	options installOptions,
+) (string, error) {
+	for _, dir := range []string{options.AssetsDir, options.ResourcesDir} {
+		archive, err := findArchive(dir, "dist")
+		if err != nil {
+			continue
+		}
+		if err := install.ValidateZip(archive); err != nil {
+			return "", err
+		}
+		return archive, nil
+	}
+
+	if options.SkipUI {
+		a.Printer.OK("已跳过 Web UI 安装")
+		return "", nil
+	}
+
+	// ZIP_UI 支持本地路径与下载地址，未配置时使用默认面板地址。
+	address := options.UIDist
+	if address == "" {
+		address = defaultUIDistURL
+	}
+	if !isRemoteAddress(address) {
+		if err := install.ValidateZip(address); err != nil {
+			return "", fmt.Errorf("校验 Web UI 压缩包 %s: %w", address, err)
+		}
+		return address, nil
+	}
+
+	return a.downloadArchive(ctx, client, options, address, install.ValidateZip)
+}
+
+// isRemoteAddress 判断地址是否为 http 或 https 地址。
+func isRemoteAddress(address string) bool {
+	return strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://")
 }
 
 // downloadArchive 下载压缩包到依赖目录并校验完整性。
@@ -403,6 +446,7 @@ func (a *App) downloadArchive(
 	client *http.Client,
 	options installOptions,
 	address string,
+	validate func(string) error,
 ) (string, error) {
 	if err := os.MkdirAll(options.AssetsDir, 0o755); err != nil {
 		return "", fmt.Errorf("创建依赖目录: %w", err)
@@ -415,7 +459,7 @@ func (a *App) downloadArchive(
 	if err := install.Download(ctx, client, proxied, target, "clashctl"); err != nil {
 		return "", err
 	}
-	if err := install.ValidateGzip(target); err != nil {
+	if err := validate(target); err != nil {
 		return "", err
 	}
 	return target, nil

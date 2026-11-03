@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -202,6 +204,18 @@ func TestParseInstallArgs(t *testing.T) {
 func prepareInstallAssets(t *testing.T, assets, resources string) {
 	t.Helper()
 
+	prepareInstallBinaries(t, assets, resources)
+	if err := writeTestZip(filepath.Join(assets, "dist.zip"), map[string]string{
+		"dist/index.html": "<html>panel</html>",
+	}); err != nil {
+		t.Fatalf("create web ui archive: %v", err)
+	}
+}
+
+// prepareInstallBinaries 生成内核、subconverter 与规则库，不包含 Web UI。
+func prepareInstallBinaries(t *testing.T, assets, resources string) {
+	t.Helper()
+
 	// 假内核与假 subconverter 只需要成功退出，用于校验配置与安装流程。
 	if err := writeTestGzip(
 		filepath.Join(assets, "clash-linux-amd64-test.gz"),
@@ -214,11 +228,6 @@ func prepareInstallAssets(t *testing.T, assets, resources string) {
 		"subconverter/pref.example.yml": "server:\n  port: 25500\n",
 	}); err != nil {
 		t.Fatalf("create subconverter archive: %v", err)
-	}
-	if err := writeTestZip(filepath.Join(assets, "dist.zip"), map[string]string{
-		"dist/index.html": "<html>panel</html>",
-	}); err != nil {
-		t.Fatalf("create web ui archive: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(resources, "Country.mmdb"), []byte("mmdb"), 0o644); err != nil {
 		t.Fatalf("create geodata: %v", err)
@@ -328,4 +337,137 @@ func writeTestZip(path string, files map[string]string) error {
 		return err
 	}
 	return os.WriteFile(path, buffer.Bytes(), 0o644)
+}
+
+// TestInstallDownloadsUI 核验缺少本地压缩包时按地址下载面板。
+func TestInstallDownloadsUI(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "archives")
+	resources := filepath.Join(root, "resources")
+	home := filepath.Join(root, "target", "clashctl")
+
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatalf("create assets: %v", err)
+	}
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		t.Fatalf("create resources: %v", err)
+	}
+	prepareInstallBinaries(t, assets, resources)
+	baseConfig := writeTestBaseConfig(t, root)
+
+	panelZip := filepath.Join(root, "panel.zip")
+	if err := writeTestZip(panelZip, map[string]string{"dist/index.html": "<html>remote</html>"}); err != nil {
+		t.Fatalf("create panel archive: %v", err)
+	}
+	payload, err := os.ReadFile(panelZip)
+	if err != nil {
+		t.Fatalf("read panel archive: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Write(payload)
+	}))
+	defer server.Close()
+
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
+		Paths:   config.NewPaths(home, "clash"),
+	}
+	err = application.install(context.Background(), []string{
+		"--home", home,
+		"--kernel", "clash",
+		"--assets", assets,
+		"--resources", resources,
+		"--sub-url", "file://" + baseConfig,
+		"--ui-dist", server.URL + "/dist.zip",
+		"--no-service",
+		"--no-start",
+		"--no-shell-rc",
+	})
+	if err != nil {
+		t.Fatalf("install() error = %v", err)
+	}
+
+	expectFile(t, filepath.Join(assets, "dist.zip"))
+	expectFile(t, filepath.Join(home, "resources", "dist", "index.html"))
+}
+
+// TestInstallUsesLocalUIDist 核验 ZIP_UI 指向本地文件时直接使用。
+func TestInstallUsesLocalUIDist(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "archives")
+	resources := filepath.Join(root, "resources")
+	home := filepath.Join(root, "target", "clashctl")
+
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatalf("create assets: %v", err)
+	}
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		t.Fatalf("create resources: %v", err)
+	}
+	prepareInstallBinaries(t, assets, resources)
+	baseConfig := writeTestBaseConfig(t, root)
+
+	localPanel := filepath.Join(root, "custom-panel.zip")
+	if err := writeTestZip(localPanel, map[string]string{"dist/index.html": "<html>local</html>"}); err != nil {
+		t.Fatalf("create panel archive: %v", err)
+	}
+
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
+		Paths:   config.NewPaths(home, "clash"),
+	}
+	err := application.install(context.Background(), []string{
+		"--home", home,
+		"--kernel", "clash",
+		"--assets", assets,
+		"--resources", resources,
+		"--sub-url", "file://" + baseConfig,
+		"--ui-dist", localPanel,
+		"--no-service",
+		"--no-start",
+		"--no-shell-rc",
+	})
+	if err != nil {
+		t.Fatalf("install() error = %v", err)
+	}
+
+	expectFile(t, filepath.Join(home, "resources", "dist", "index.html"))
+}
+
+// TestInstallRejectsBrokenUIDist 核验面板压缩包无效时报错。
+func TestInstallRejectsBrokenUIDist(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "archives")
+	resources := filepath.Join(root, "resources")
+	home := filepath.Join(root, "target", "clashctl")
+
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatalf("create assets: %v", err)
+	}
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		t.Fatalf("create resources: %v", err)
+	}
+	prepareInstallBinaries(t, assets, resources)
+
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
+		Paths:   config.NewPaths(home, "clash"),
+	}
+	err := application.install(context.Background(), []string{
+		"--home", home,
+		"--kernel", "clash",
+		"--assets", assets,
+		"--resources", resources,
+		"--ui-dist", filepath.Join(root, "missing.zip"),
+		"--no-service",
+		"--no-start",
+		"--no-shell-rc",
+	})
+	if err == nil {
+		t.Fatal("install() error = nil for broken ui archive")
+	}
+	if !strings.Contains(err.Error(), "Web UI") {
+		t.Fatalf("install() error = %v", err)
+	}
 }

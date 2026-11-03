@@ -19,7 +19,7 @@
 - Linux，架构为 amd64、arm64、386 或 arm。
 - 已安装 `pgrep`、`pkill`，以及 `ip` 或 `hostname`。查看订阅日志需要 `tail`，定时更新订阅需要 `crontab`，编码转换需要 `iconv`，这些命令缺失时对应功能不可用。
 - 一个可用的订阅链接，或者一份本地 Clash / mihomo 配置。
-- 一个 Web UI 面板包 `dist.zip`。
+- 一个 Web UI 面板包 `dist.zip`，不提供时安装会按默认地址下载。
 
 ### 第 2 步：取得二进制
 
@@ -38,7 +38,7 @@ make build
 | 路径 | 内容 | 是否必需 |
 | --- | --- | --- |
 | `archives/` | 内核与 subconverter 压缩包 | 否，缺失时自动下载 |
-| `archives/dist.zip` | Web UI 面板 | 是，或用 `--skip-ui` 跳过 |
+| `archives/dist.zip` | Web UI 面板 | 否，缺失时按 `--ui-dist` 或默认地址下载 |
 | `resources/Country.mmdb` | 国家与地区规则库 | 否，内核首次启动自行下载 |
 | `resources/geosite.dat` | 域名规则库 | 否，内核首次启动自行下载 |
 
@@ -82,6 +82,7 @@ clashctl install --kernel clash --sub-url file:///path/to/config.yaml
 | --- | --- | --- |
 | `--kernel mihomo\|clash` | `mihomo` | 安装的内核 |
 | `--sub-url <url>` | 空 | 初始订阅，支持 `http`、`https`、`file` |
+| `--ui-dist <path\|url>` | zashboard 最新版 | Web UI 压缩包路径或下载地址 |
 | `--home <dir>` | `~/.local/share/clashctl` | 安装目录 |
 | `--assets <dir>` | `archives` | 依赖压缩包目录 |
 | `--resources <dir>` | `resources` | 规则库与 `dist.zip` 目录 |
@@ -108,12 +109,15 @@ GH_PROXY=
 VERSION_MIHOMO=
 VERSION_SUBCONVERTER=
 SUBCONVERTER_REPO=asdlokj1qpi233/subconverter
+ZIP_UI=
 ```
+
+`ZIP_UI` 支持本地路径与 `http`、`https` 地址，留空时使用 zashboard 的发布包。
 
 ### 安装流程
 
 1. 检查依赖命令，确认安装目录不存在且父目录可写。
-2. 查找依赖压缩包，缺失时按版本号下载；amd64 上依据 CPU 指令集选择 mihomo 的 v1、v2、v3 版本。
+2. 查找依赖压缩包，缺失时按版本号下载；Web UI 缺失时按 `ZIP_UI` 或默认地址下载；amd64 上依据 CPU 指令集选择 mihomo 的 v1、v2、v3 版本。
 3. 校验压缩包完整性，解压内核、subconverter 与 Web UI，复制规则库。
 4. 建立目录并写入默认 `mixin.yaml`、`profiles.yaml`、`.env` 与 shell 入口脚本。
 5. 按运行方式渲染服务单元，重载配置并设置开机自启。
@@ -275,7 +279,7 @@ source /path/to/clashctl/scripts/cmd/clashctl.sh
 
 **面板地址返回 404**
 
-Web UI 未安装。安装时提供 `archives/dist.zip`，或把面板文件放到 `resources/dist/`。
+Web UI 未安装或下载失败。重新安装时不加 `--skip-ui`，或把面板文件放到 `resources/dist/`。
 
 **服务启动后立刻退出**
 
