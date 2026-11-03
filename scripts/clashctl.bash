@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# 兼容原有 shell 函数的环境变量行为，服务管理与配置逻辑由 Go 二进制完成。
+# 提供 shell 函数，把代理变量导出到当前终端；其余命令直接转交二进制。
 # CLASHCTL_GO_BIN 默认取 PATH 中的 clashctl；这里用 command 调用，避免同名函数递归。
 : "${CLASHCTL_GO_BIN:=clashctl}"
 
