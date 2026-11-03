@@ -151,6 +151,7 @@ Web UI 压缩包默认取 zashboard 的发布包，可用 `--ui-dist` 指定本�
 | `clashctl upgrade [-v\|-r\|-a]` | 通过本地控制接口升级 mihomo 内核 |
 | `clashctl self-upgrade [--version <tag>]` | 从 GitHub Release 升级 clashctl 自身 |
 | `clashctl install [选项]` | 首次安装 |
+| `clashctl version` | 输出 clashctl 版本 |
 | `clashctl help` | 输出命令列表 |
 
 ### 代理开关
@@ -220,7 +221,9 @@ clashctl tun off    # 关闭
 
 `clashctl upgrade` 通过 `external-controller` 的 `/upgrade` 接口升级 mihomo 内核，`-r` 使用稳定版，`-a` 使用测试版，`-v` 同时跟随升级日志。
 
-`clashctl self-upgrade` 查询 `github.com/kerolt/clashctl-go` 的最新稳定 Release，下载当前 Linux 架构的程序文件，校验 `SHA256SUMS` 后原子替换当前的 clashctl。使用 `--version <tag>` 可以指定目标 Release，例如 `clashctl self-upgrade --version v1.2.3`。
+`clashctl self-upgrade` 查询 `github.com/kerolt/clashctl-go` 的最新稳定 Release，下载当前 Linux 架构的程序文件，校验 `SHA256SUMS` 后原子替换当前的 clashctl。使用 `--version <tag>` 可以指定目标 Release，例如 `clashctl self-upgrade --version v1.2.3`。目标版本不高于当前版本时命令直接提示已是最新版本，不下载也不替换文件。
+
+`clashctl version` 输出当前 clashctl 版本，`clashctl --version` 等价。
 
 ## 配置
 

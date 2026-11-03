@@ -103,6 +103,8 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		return a.upgrade(ctx, arguments)
 	case "self-upgrade":
 		return a.selfUpgrade(ctx, arguments)
+	case "version", "--version":
+		return a.version()
 	case "__env-on":
 		a.ShellOutput = true
 		return a.on(ctx, []string{"--env-only"})
@@ -135,9 +137,11 @@ Commands:
   install               首次安装
   upgrade               升级 mihomo 内核
   self-upgrade          升级 clashctl 自身
+  version               查看 clashctl 版本
 
 Global Options:
   -h, --help            显示帮助信息
+  --version             显示版本信息
 `)
 	return nil
 }

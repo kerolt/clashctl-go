@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -43,9 +44,11 @@ type Release struct {
 
 // Result 描述一次自升级结果。
 type Result struct {
-	Tag        string
-	AssetName  string
-	TargetPath string
+	Tag            string
+	AssetName      string
+	TargetPath     string
+	CurrentVersion string
+	Updated        bool
 }
 
 // Client 访问 GitHub Releases 并更新当前程序。
@@ -128,16 +131,29 @@ func SelectAssets(release Release, goos, goarch string) (Asset, Asset, error) {
 }
 
 // Upgrade 下载目标 Release，校验资源并原子替换 executablePath。
+// 当前版本不低于目标版本时不下载任何资源。
 func (c *Client) Upgrade(
 	ctx context.Context,
 	tag string,
 	executablePath string,
 	goos string,
 	goarch string,
+	currentVersion string,
 ) (Result, error) {
 	release, err := c.ResolveRelease(ctx, tag)
 	if err != nil {
 		return Result{}, err
+	}
+	outdated, err := needsUpgrade(release.TagName, currentVersion)
+	if err != nil {
+		return Result{}, err
+	}
+	if !outdated {
+		return Result{
+			Tag:            release.TagName,
+			CurrentVersion: currentVersion,
+			Updated:        false,
+		}, nil
 	}
 	binary, checksums, err := SelectAssets(release, goos, goarch)
 	if err != nil {
@@ -177,9 +193,11 @@ func (c *Client) Upgrade(
 	}
 
 	return Result{
-		Tag:        release.TagName,
-		AssetName:  binary.Name,
-		TargetPath: target,
+		Tag:            release.TagName,
+		AssetName:      binary.Name,
+		TargetPath:     target,
+		CurrentVersion: currentVersion,
+		Updated:        true,
 	}, nil
 }
 
@@ -320,4 +338,61 @@ func verifyChecksum(path, assetName string, checksumData []byte) error {
 // CurrentPlatform 返回当前程序运行平台。
 func CurrentPlatform() (string, string) {
 	return runtime.GOOS, runtime.GOARCH
+}
+
+// needsUpgrade 报告目标版本是否高于当前版本。当前版本不是语义版本时按需要升级处理。
+func needsUpgrade(target, current string) (bool, error) {
+	targetParts, err := parseVersion(target)
+	if err != nil {
+		return false, fmt.Errorf("解析 release 版本 %s: %w", target, err)
+	}
+	currentParts, err := parseVersion(current)
+	if err != nil {
+		return true, nil
+	}
+	return compareVersion(targetParts, currentParts) > 0, nil
+}
+
+func parseVersion(value string) ([]int, error) {
+	trimmed := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(value), "v"), "V")
+	if trimmed == "" {
+		return nil, fmt.Errorf("版本号为空")
+	}
+
+	fields := strings.Split(trimmed, ".")
+	parts := make([]int, 0, len(fields))
+	for _, field := range fields {
+		number, err := strconv.Atoi(field)
+		if err != nil {
+			return nil, fmt.Errorf("无效的版本号 %s", value)
+		}
+		if number < 0 {
+			return nil, fmt.Errorf("无效的版本号 %s", value)
+		}
+		parts = append(parts, number)
+	}
+	return parts, nil
+}
+
+func compareVersion(left, right []int) int {
+	length := len(left)
+	if len(right) > length {
+		length = len(right)
+	}
+	for index := 0; index < length; index++ {
+		var leftValue, rightValue int
+		if index < len(left) {
+			leftValue = left[index]
+		}
+		if index < len(right) {
+			rightValue = right[index]
+		}
+		if leftValue > rightValue {
+			return 1
+		}
+		if leftValue < rightValue {
+			return -1
+		}
+	}
+	return 0
 }

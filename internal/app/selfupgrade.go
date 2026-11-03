@@ -34,9 +34,13 @@ func (a *App) selfUpgrade(ctx context.Context, args []string) error {
 
 	a.Printer.OKWithEmoji("⏳", "正在查询 clashctl release...")
 	client := selfupgrade.NewClient(nil)
-	result, err := client.Upgrade(ctx, version, executablePath, goos, goarch)
+	result, err := client.Upgrade(ctx, version, executablePath, goos, goarch, Version)
 	if err != nil {
 		return fmt.Errorf("clashctl 自升级失败: %w", err)
+	}
+	if !result.Updated {
+		a.Printer.OKWithEmoji("🎉", "clashctl 已是最新版本 "+result.Tag)
+		return nil
 	}
 	a.Printer.OKWithEmoji("🎉", "clashctl 已更新到 "+result.Tag)
 	return nil

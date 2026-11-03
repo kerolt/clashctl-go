@@ -48,7 +48,7 @@ func TestUpgrade(t *testing.T) {
 
 	client := NewClient(server.Client())
 	client.APIBaseURL = server.URL
-	result, err := client.Upgrade(t.Context(), "", target, "linux", "amd64")
+	result, err := client.Upgrade(t.Context(), "", target, "linux", "amd64", "dev")
 	if err != nil {
 		t.Fatalf("Upgrade() error = %v", err)
 	}
@@ -169,7 +169,7 @@ func TestUpgradeRejectsChecksumMismatch(t *testing.T) {
 
 	client := NewClient(server.Client())
 	client.APIBaseURL = server.URL
-	if _, err := client.Upgrade(t.Context(), "", target, "linux", "amd64"); err == nil {
+	if _, err := client.Upgrade(t.Context(), "", target, "linux", "amd64", "dev"); err == nil {
 		t.Fatal("Upgrade() error = nil for checksum mismatch")
 	}
 	content, err := os.ReadFile(target)
@@ -178,6 +178,76 @@ func TestUpgradeRejectsChecksumMismatch(t *testing.T) {
 	}
 	if string(content) != "old" {
 		t.Fatalf("executable changed after failed upgrade: %q", content)
+	}
+}
+
+func TestUpgradeSkipsLatest(t *testing.T) {
+	downloads := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/repos/kerolt/clashctl-go/releases/latest":
+			writeJSON(t, writer, Release{TagName: "v1.2.3"})
+		default:
+			downloads++
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient(server.Client())
+	client.APIBaseURL = server.URL
+	result, err := client.Upgrade(
+		t.Context(),
+		"",
+		filepath.Join(t.TempDir(), "clashctl"),
+		"linux",
+		"amd64",
+		"v1.2.3",
+	)
+	if err != nil {
+		t.Fatalf("Upgrade() error = %v", err)
+	}
+	if result.Updated {
+		t.Fatal("Updated = true for the installed version")
+	}
+	if downloads != 0 {
+		t.Fatalf("downloads = %d, want 0", downloads)
+	}
+}
+
+func TestNeedsUpgrade(t *testing.T) {
+	tests := []struct {
+		name    string
+		target  string
+		current string
+		want    bool
+		wantErr bool
+	}{
+		{name: "same version", target: "v0.1.0", current: "v0.1.0", want: false},
+		{name: "same version without prefix", target: "v0.1.0", current: "0.1.0", want: false},
+		{name: "newer release", target: "v0.2.0", current: "v0.1.0", want: true},
+		{name: "older release", target: "v0.1.0", current: "v0.2.0", want: false},
+		{name: "newer patch release", target: "v0.1.1", current: "v0.1.0", want: true},
+		{name: "development version", target: "v0.1.0", current: "dev", want: true},
+		{name: "invalid release version", target: "latest", current: "v0.1.0", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := needsUpgrade(tt.target, tt.current)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("needsUpgrade() error = nil for invalid version")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("needsUpgrade() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("needsUpgrade(%q, %q) = %v, want %v", tt.target, tt.current, got, tt.want)
+			}
+		})
 	}
 }
 
