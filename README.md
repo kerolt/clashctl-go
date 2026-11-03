@@ -95,29 +95,18 @@ clashctl install --kernel clash --sub-url file:///path/to/config.yaml
 | `--no-service` | 否 | 不注册服务单元 |
 | `--no-start` | 否 | 只安装不启动 |
 | `--no-shell-rc` | 否 | 不写入 shell 配置 |
+| `--download-timeout <时长>` | `60s` | 依赖下载超时，支持 `30s`、`2m` 写法 |
 
-### 参数文件
+### 默认值来源
 
-当前目录下的 `.env.install` 可以保存安装参数，命令行标志优先级更高：
+安装参数来自环境变量与内置默认值，命令行标志优先级最高。相关环境变量见「配置」章节的路径与环境变量表。
 
-```ini
-CLASHCTL_HOME=~/.local/share/clashctl
-CLASHCTL_KERNEL=mihomo
-CLASHCTL_SUB_URL=
-CLASHCTL_DOWNLOAD_TIMEOUT=60
-GH_PROXY=
-VERSION_MIHOMO=
-VERSION_SUBCONVERTER=
-SUBCONVERTER_REPO=asdlokj1qpi233/subconverter
-ZIP_UI=
-```
-
-`ZIP_UI` 支持本地路径与 `http`、`https` 地址，留空时使用 zashboard 的发布包。
+Web UI 压缩包默认取 zashboard 的发布包，可用 `--ui-dist` 指定本地路径或其他 `http`、`https` 地址。
 
 ### 安装流程
 
 1. 检查依赖命令，确认安装目录不存在且父目录可写。
-2. 查找依赖压缩包，缺失时按版本号下载；Web UI 缺失时按 `ZIP_UI` 或默认地址下载；amd64 上依据 CPU 指令集选择 mihomo 的 v1、v2、v3 版本。
+2. 查找依赖压缩包，缺失时按版本号下载；Web UI 缺失时按 `--ui-dist` 或默认地址下载；amd64 上依据 CPU 指令集选择 mihomo 的 v1、v2、v3 版本。
 3. 校验压缩包完整性，解压内核、subconverter 与 Web UI，复制规则库。
 4. 建立目录并写入默认 `mixin.yaml`、`profiles.yaml`、`.env` 与 shell 入口脚本。
 5. 按运行方式渲染服务单元，重载配置并设置开机自启。
@@ -241,6 +230,7 @@ clashctl tun off    # 关闭
 | `CLASHCTL_KERNEL` | `mihomo` | 内核名称 |
 | `CLASHCTL_SUB_TIMEOUT` | `5` | 订阅下载超时秒数 |
 | `CLASHCTL_SUB_UA` | `mihomo` | 订阅下载 User-Agent |
+| `CLASHCTL_DOWNLOAD_TIMEOUT` | `60` | 依赖下载超时秒数 |
 | `CLASHCTL_GO_BIN` | `clashctl` | shell 函数调用的二进制 |
 
 安装目录下的 `.env` 会被读取，已经存在的同名环境变量优先。

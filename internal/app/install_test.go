@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/nelvko/clashctl-go/internal/config"
 	"github.com/nelvko/clashctl-go/internal/output"
@@ -392,7 +393,7 @@ func TestInstallDownloadsUI(t *testing.T) {
 	expectFile(t, filepath.Join(home, "resources", "dist", "index.html"))
 }
 
-// TestInstallUsesLocalUIDist 核验 ZIP_UI 指向本地文件时直接使用。
+// TestInstallUsesLocalUIDist 核验 --ui-dist 指向本地文件时直接使用。
 func TestInstallUsesLocalUIDist(t *testing.T) {
 	root := t.TempDir()
 	assets := filepath.Join(root, "archives")
@@ -469,5 +470,72 @@ func TestInstallRejectsBrokenUIDist(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Web UI") {
 		t.Fatalf("install() error = %v", err)
+	}
+}
+
+// TestParseInstallArgsEnvDefaults 核验环境变量作为安装默认值。
+func TestParseInstallArgsEnvDefaults(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "clashctl")
+
+	t.Setenv("CLASHCTL_KERNEL", "clash")
+	t.Setenv("CLASHCTL_SUB_UA", "clash-ua")
+	t.Setenv("CLASHCTL_DOWNLOAD_TIMEOUT", "30")
+
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
+		Paths:   config.NewPaths(home, "clash"),
+	}
+
+	options, err := application.parseInstallArgs(nil)
+	if err != nil {
+		t.Fatalf("parseInstallArgs() error = %v", err)
+	}
+	if options.Kernel != "clash" {
+		t.Fatalf("Kernel = %q, want clash", options.Kernel)
+	}
+	if options.SubUA != "clash-ua" {
+		t.Fatalf("SubUA = %q", options.SubUA)
+	}
+	if options.DownloadTimeout != 30*time.Second {
+		t.Fatalf("DownloadTimeout = %v, want 30s", options.DownloadTimeout)
+	}
+	if options.UIDist != "" {
+		t.Fatalf("UIDist = %q, want empty", options.UIDist)
+	}
+}
+
+// TestParseInstallArgsIgnoresLegacyFile 核验旧参数文件不再影响安装参数。
+func TestParseInstallArgsIgnoresLegacyFile(t *testing.T) {
+	workDir := t.TempDir()
+	legacy := `CLASHCTL_KERNEL=clash
+CLASHCTL_HOME=/tmp/legacy-home
+ZIP_UI=/tmp/legacy-dist.zip
+`
+	if err := os.WriteFile(filepath.Join(workDir, ".env.install"), []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write legacy file: %v", err)
+	}
+	t.Chdir(workDir)
+
+	home := filepath.Join(t.TempDir(), "clashctl")
+	t.Setenv("CLASHCTL_KERNEL", "")
+	t.Setenv("CLASHCTL_SUB_UA", "")
+
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
+		Paths:   config.NewPaths(home, "mihomo"),
+	}
+
+	options, err := application.parseInstallArgs(nil)
+	if err != nil {
+		t.Fatalf("parseInstallArgs() error = %v", err)
+	}
+	if options.Kernel != "mihomo" {
+		t.Fatalf("Kernel = %q, want mihomo", options.Kernel)
+	}
+	if options.Home != home {
+		t.Fatalf("Home = %q, want %q", options.Home, home)
+	}
+	if options.UIDist != "" {
+		t.Fatalf("UIDist = %q, want empty", options.UIDist)
 	}
 }

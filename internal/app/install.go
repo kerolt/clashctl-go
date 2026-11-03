@@ -189,26 +189,19 @@ type installRegion struct {
 	level        string
 }
 
-// parseInstallArgs 解析安装参数，并读取 .env.install 中的默认值。
+// parseInstallArgs 解析安装参数，默认值来自环境变量与内置默认设置。
 func (a *App) parseInstallArgs(args []string) (installOptions, error) {
-	envFile := readInstallEnv(".")
-
 	options := installOptions{
-		Kernel:              firstNonEmpty(envFile["CLASHCTL_KERNEL"], "mihomo"),
-		SubURL:              envFile["CLASHCTL_SUB_URL"],
-		Home:                firstNonEmpty(envFile["CLASHCTL_HOME"], a.Paths.Home),
-		AssetsDir:           "archives",
-		ResourcesDir:        "resources",
-		DownloadTimeout:     defaultDownloadTimeout,
-		GHProxy:             envFile["GH_PROXY"],
-		VersionMihomo:       envFile["VERSION_MIHOMO"],
-		VersionSubconverter: envFile["VERSION_SUBCONVERTER"],
-		SubconverterRepo:    firstNonEmpty(envFile["SUBCONVERTER_REPO"], defaultSubconverterRepo),
-		SubUA:               firstNonEmpty(envFile["CLASHCTL_SUB_UA"], "mihomo"),
-		UIDist:              envFile["ZIP_UI"],
+		Kernel:           config.KernelFromEnvironment(),
+		Home:             a.Paths.Home,
+		AssetsDir:        "archives",
+		ResourcesDir:     "resources",
+		DownloadTimeout:  defaultDownloadTimeout,
+		SubconverterRepo: defaultSubconverterRepo,
+		SubUA:            firstNonEmpty(os.Getenv("CLASHCTL_SUB_UA"), "mihomo"),
 	}
 
-	if value := envFile["CLASHCTL_DOWNLOAD_TIMEOUT"]; value != "" {
+	if value := os.Getenv("CLASHCTL_DOWNLOAD_TIMEOUT"); value != "" {
 		seconds, err := strconv.Atoi(value)
 		if err != nil {
 			return installOptions{}, fmt.Errorf("无效的下载超时时间: %w", err)
@@ -233,6 +226,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 	flags.BoolVar(&options.NoService, "no-service", false, "不注册服务单元")
 	flags.BoolVar(&options.NoStart, "no-start", false, "只安装不启动")
 	flags.BoolVar(&options.NoShellRC, "no-shell-rc", false, "不写入 shell 配置")
+	flags.DurationVar(&options.DownloadTimeout, "download-timeout", options.DownloadTimeout, "依赖下载超时时间")
 
 	// 分段解析，允许标志与位置参数以任意顺序出现。
 	positionals := []string{}
@@ -347,7 +341,7 @@ func (a *App) prepareKernel(
 	if options.Kernel == "mihomo" && version == "" {
 		latest, err := install.ResolveLatestTag(ctx, client, install.KernelRepository)
 		if err != nil {
-			return "", fmt.Errorf("获取 mihomo 版本失败，可在 .env.install 指定 VERSION_MIHOMO: %w", err)
+			return "", fmt.Errorf("获取 mihomo 版本失败，可用 --version-mihomo 指定: %w", err)
 		}
 		a.Printer.OKWithEmoji("🏷️", "mihomo → "+latest)
 		version = latest
@@ -385,7 +379,7 @@ func (a *App) prepareSubconverter(
 	if version == "" {
 		latest, err := install.ResolveLatestTag(ctx, client, options.SubconverterRepo)
 		if err != nil {
-			return "", fmt.Errorf("获取 subconverter 版本失败，可在 .env.install 指定 VERSION_SUBCONVERTER: %w", err)
+			return "", fmt.Errorf("获取 subconverter 版本失败，可用 --version-subconverter 指定: %w", err)
 		}
 		a.Printer.OKWithEmoji("🏷️", options.SubconverterRepo+" → "+latest)
 		version = latest
@@ -420,7 +414,7 @@ func (a *App) prepareUIArchive(
 		return "", nil
 	}
 
-	// ZIP_UI 支持本地路径与下载地址，未配置时使用默认面板地址。
+	// --ui-dist 支持本地路径与下载地址，未配置时使用默认面板地址。
 	address := options.UIDist
 	if address == "" {
 		address = defaultUIDistURL
@@ -539,30 +533,6 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
-}
-
-func readInstallEnv(dir string) map[string]string {
-	values := map[string]string{}
-
-	data, err := os.ReadFile(filepath.Join(dir, ".env.install"))
-	if err != nil {
-		return values
-	}
-
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		key = strings.TrimSpace(key)
-		value = strings.TrimSpace(strings.SplitN(value, "#", 2)[0])
-		values[key] = strings.Trim(value, "\"'")
-	}
-	return values
 }
 
 // ensureSecret 在运行配置缺少密钥时生成随机密钥。
