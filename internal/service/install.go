@@ -18,6 +18,18 @@ func (m *Manager) InstallUnit(ctx context.Context) (string, error) {
 		run = process.Run
 	}
 
+	// 首次安装时还没有单元文件，非 root 用户在可用 systemd 主机上注册用户级单元。
+	if m.Manager == "nohup" {
+		if os.Geteuid() != 0 && systemctlUserAvailable() {
+			m.Manager = "systemd"
+			m.SystemdScope = "--user"
+			m.LogPath = filepath.Join(m.Paths.Resources, m.Kernel+".log")
+		} else {
+			// nohup 方式由进程直接托管，没有单元文件需要写入。
+			return "", nil
+		}
+	}
+
 	params := UnitParams{
 		Kernel:      m.Kernel,
 		Description: m.Kernel + " Daemon, A[nother] Clash Kernel (clashctl)",
@@ -67,15 +79,7 @@ func (m *Manager) unitPath() (string, error) {
 		if m.SystemdScope == "" {
 			return filepath.Join("/etc/systemd/system", m.Kernel+".service"), nil
 		}
-		configHome := os.Getenv("XDG_CONFIG_HOME")
-		if configHome == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return "", fmt.Errorf("查找用户目录: %w", err)
-			}
-			configHome = filepath.Join(home, ".config")
-		}
-		return filepath.Join(configHome, "systemd", "user", m.Kernel+".service"), nil
+		return userUnitPath(m.Kernel), nil
 	case "sysvinit", "openrc":
 		return filepath.Join("/etc/init.d", m.Kernel), nil
 	case "runit":

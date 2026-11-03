@@ -128,12 +128,14 @@ func (a *App) install(ctx context.Context, args []string) error {
 	}
 
 	a.Service = service.New(a.Paths, options.Kernel)
-	if !options.NoService && a.Service.Manager != "nohup" {
+	if !options.NoService {
 		target, err := a.Service.InstallUnit(ctx)
 		if err != nil {
 			return err
 		}
-		a.Printer.OKWithEmoji("🧩", "已注册服务："+target)
+		if target != "" {
+			a.Printer.OKWithEmoji("🧩", "已注册服务："+target)
+		}
 		a.Service = service.New(a.Paths, options.Kernel)
 	}
 

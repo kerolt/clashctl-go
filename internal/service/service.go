@@ -85,24 +85,34 @@ func (m *Manager) detect() {
 	}
 }
 
-// userSystemdAvailable 报告用户级服务单元是否可用。
+// userSystemdAvailable 报告用户级服务单元存在且可控。
 func userSystemdAvailable(kernel string) bool {
+	if !systemctlUserAvailable() {
+		return false
+	}
+	_, err := os.Stat(userUnitPath(kernel))
+	return err == nil
+}
+
+// systemctlUserAvailable 报告当前会话能否控制用户级 systemd。
+func systemctlUserAvailable() bool {
 	if _, err := exec.LookPath("systemctl"); err != nil {
 		return false
 	}
-	if err := exec.Command("systemctl", "--user", "show-environment").Run(); err != nil {
-		return false
-	}
-	unitPath := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "systemd", "user", kernel+".service")
-	if os.Getenv("XDG_CONFIG_HOME") == "" {
+	return exec.Command("systemctl", "--user", "show-environment").Run() == nil
+}
+
+// userUnitPath 返回用户级服务单元文件路径。
+func userUnitPath(kernel string) string {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return false
+			return ""
 		}
-		unitPath = filepath.Join(home, ".config", "systemd", "user", kernel+".service")
+		configHome = filepath.Join(home, ".config")
 	}
-	_, err := os.Stat(unitPath)
-	return err == nil
+	return filepath.Join(configHome, "systemd", "user", kernel+".service")
 }
 
 // systemctl 按需要附加用户级作用域执行 systemctl。
