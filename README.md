@@ -1,6 +1,6 @@
 # clashctl-go
 
-在 Linux 上部署和管理 mihomo / clash 内核的命令行工具。它负责内核服务、代理环境、订阅、Mixin 配置、TUN 模式和 Web 面板入口，全部功能集中在一个二进制中。
+在 Linux 上部署和管理 mihomo 内核的命令行工具。它负责内核服务、代理环境、订阅、Mixin 配置、TUN 模式和 Web 面板入口，全部功能集中在一个二进制中。
 
 ## 功能
 
@@ -66,21 +66,20 @@ curl -I https://www.google.com
 ### 命令形式
 
 ```bash
-clashctl install [选项] [内核] [订阅链接]
+clashctl install [选项] [订阅链接]
 ```
 
-位置参数可以省略，等价于使用 `--kernel` 与 `--sub-url`。位置参数与标志可以任意顺序混合。
+订阅链接可以省略，位置参数与标志可以任意顺序混合。
 
 ```bash
-clashctl install mihomo https://example.com/sub
-clashctl install --kernel clash --sub-url file:///path/to/config.yaml
+clashctl install https://example.com/sub
+clashctl install --sub-url file:///path/to/config.yaml
 ```
 
 ### 选项
 
 | 选项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `--kernel mihomo\|clash` | `mihomo` | 安装的内核 |
 | `--sub-url <url>` | 空 | 初始订阅，支持 `http`、`https`、`file` |
 | `--ui-dist <path\|url>` | zashboard 最新版 | Web UI 压缩包路径或下载地址 |
 | `--home <dir>` | `~/.local/share/clashctl` | 安装目录 |
@@ -121,7 +120,7 @@ Web UI 压缩包默认取 zashboard 的发布包，可用 `--ui-dist` 指定本�
 | 路径 | 说明 |
 | --- | --- |
 | `.env` | 订阅超时与 User-Agent |
-| `bin/<内核>` | 内核二进制 |
+| `bin/mihomo` | mihomo 二进制文件 |
 | `bin/subconverter/subconverter` | 订阅转换服务 |
 | `bin/subconverter/pref.yml` | 订阅转换配置 |
 | `resources/config.yaml` | 基础订阅配置 |
@@ -133,7 +132,7 @@ Web UI 压缩包默认取 zashboard 的发布包，可用 `--ui-dist` 指定本�
 | `resources/profiles.log` | 订阅操作日志 |
 | `resources/Country.mmdb`、`resources/geosite.dat` | 规则库 |
 | `resources/dist/` | Web UI 静态文件 |
-| `resources/<内核>.log` | 用户级与 nohup 场景的内核日志 |
+| `resources/mihomo.log` | 用户级与 nohup 场景的 mihomo 日志 |
 | `scripts/cmd/clashctl.sh` | shell 入口脚本 |
 
 ## 命令
@@ -227,7 +226,6 @@ clashctl tun off    # 关闭
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `CLASHCTL_HOME` | `$XDG_DATA_HOME/clashctl`，否则 `~/.local/share/clashctl` | 安装目录 |
-| `CLASHCTL_KERNEL` | `mihomo` | 内核名称 |
 | `CLASHCTL_SUB_TIMEOUT` | `5` | 订阅下载超时秒数 |
 | `CLASHCTL_SUB_UA` | `mihomo` | 订阅下载 User-Agent |
 | `CLASHCTL_DOWNLOAD_TIMEOUT` | `60` | 依赖下载超时秒数 |

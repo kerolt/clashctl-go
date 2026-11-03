@@ -57,12 +57,12 @@ func TestFromEnvironment(t *testing.T) {
 
 // TestNewPaths 校验资源文件都位于安装目录之下。
 func TestNewPaths(t *testing.T) {
-	paths := NewPaths("/srv/clashctl", "clash")
+	paths := NewPaths("/srv/clashctl", "mihomo")
 
 	if paths.RuntimeConfig != "/srv/clashctl/resources/runtime.yaml" {
 		t.Fatalf("RuntimeConfig = %q", paths.RuntimeConfig)
 	}
-	if paths.KernelPath != "/srv/clashctl/bin/clash" {
+	if paths.KernelPath != "/srv/clashctl/bin/mihomo" {
 		t.Fatalf("KernelPath = %q", paths.KernelPath)
 	}
 	if paths.ProfilesMeta != "/srv/clashctl/resources/profiles.yaml" {

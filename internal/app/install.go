@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"flag"
 	"fmt"
 	"math/big"
@@ -14,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nelvko/clashctl-go/internal/config"
-	"github.com/nelvko/clashctl-go/internal/install"
-	"github.com/nelvko/clashctl-go/internal/service"
-	"github.com/nelvko/clashctl-go/internal/subscription"
+	"github.com/kerolt/clashctl-go/internal/assets"
+	"github.com/kerolt/clashctl-go/internal/config"
+	"github.com/kerolt/clashctl-go/internal/service"
+	"github.com/kerolt/clashctl-go/internal/subscription"
 )
 
 const (
@@ -50,6 +51,9 @@ type installOptions struct {
 // install 执行首次安装：准备依赖、生成配置、注册服务并写入 shell 配置。
 func (a *App) install(ctx context.Context, args []string) error {
 	options, err := a.parseInstallArgs(args)
+	if errors.Is(err, flag.ErrHelp) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -61,8 +65,8 @@ func (a *App) install(ctx context.Context, args []string) error {
 		return err
 	}
 
-	a.Paths = config.NewPaths(options.Home, options.Kernel)
-	a.Kernel = options.Kernel
+	a.Paths = config.NewPaths(options.Home, "mihomo")
+	a.Kernel = "mihomo"
 	a.KernelPath = a.Paths.KernelPath
 
 	// 订阅管理器必须指向本次安装目录，不能沿用启动时的 CLASHCTL_HOME。
@@ -76,14 +80,14 @@ func (a *App) install(ctx context.Context, args []string) error {
 	a.Printer.OKWithEmoji("📦", "安装内核："+options.Kernel)
 	a.Printer.OKWithEmoji("📦", "安装路径："+options.Home)
 
-	client := install.NewClient(options.DownloadTimeout)
-	region := installRegion{architecture: install.Architecture()}
+	client := assets.NewClient(options.DownloadTimeout)
+	region := installRegion{architecture: assets.Architecture()}
 	if region.architecture == "amd64" {
-		flags, err := install.CPUFlags()
+		flags, err := assets.CPUFlags()
 		if err != nil {
 			return err
 		}
-		region.level = install.Amd64Level(flags)
+		region.level = assets.Amd64Level(flags)
 	}
 
 	kernelArchive, err := a.prepareKernel(ctx, client, options, region)
@@ -106,17 +110,17 @@ func (a *App) install(ctx context.Context, args []string) error {
 		return fmt.Errorf("创建程序目录: %w", err)
 	}
 
-	if err := install.ExtractGzip(kernelArchive, a.Paths.KernelPath); err != nil {
+	if err := assets.ExtractGzip(kernelArchive, a.Paths.KernelPath); err != nil {
 		return fmt.Errorf("解压内核: %w", err)
 	}
-	if err := install.ExtractTarGz(subconverterArchive, filepath.Dir(filepath.Dir(a.Paths.SubconverterPath))); err != nil {
+	if err := assets.ExtractTarGz(subconverterArchive, filepath.Dir(filepath.Dir(a.Paths.SubconverterPath))); err != nil {
 		return fmt.Errorf("解压 subconverter: %w", err)
 	}
 	if err := installSubconverterConfig(a.Paths); err != nil {
 		return err
 	}
 	if uiArchive != "" {
-		if err := install.ExtractZip(uiArchive, a.Paths.Resources); err != nil {
+		if err := assets.ExtractZip(uiArchive, a.Paths.Resources); err != nil {
 			return fmt.Errorf("解压 Web UI: %w", err)
 		}
 	}
@@ -194,7 +198,7 @@ type installRegion struct {
 // parseInstallArgs 解析安装参数，默认值来自环境变量与内置默认设置。
 func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 	options := installOptions{
-		Kernel:           config.KernelFromEnvironment(),
+		Kernel:           "mihomo",
 		Home:             a.Paths.Home,
 		AssetsDir:        "archives",
 		ResourcesDir:     "resources",
@@ -213,7 +217,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 
 	flags := flag.NewFlagSet("install", flag.ContinueOnError)
 	flags.SetOutput(a.Printer.Err)
-	flags.StringVar(&options.Kernel, "kernel", options.Kernel, "内核名称：mihomo 或 clash")
+	flags.StringVar(&options.Kernel, "kernel", options.Kernel, "内核名称：仅支持 mihomo")
 	flags.StringVar(&options.SubURL, "sub-url", options.SubURL, "初始订阅链接")
 	flags.StringVar(&options.Home, "home", options.Home, "安装路径")
 	flags.StringVar(&options.AssetsDir, "assets", options.AssetsDir, "依赖压缩包目录")
@@ -257,7 +261,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 	// 位置参数：内核名称在前，订阅链接在后。
 	for _, arg := range positionals {
 		switch {
-		case arg == "mihomo" || arg == "clash":
+		case arg == "mihomo":
 			options.Kernel = arg
 		case strings.HasPrefix(arg, "http://"), strings.HasPrefix(arg, "https://"), strings.HasPrefix(arg, "file://"):
 			options.SubURL = arg
@@ -266,7 +270,7 @@ func (a *App) parseInstallArgs(args []string) (installOptions, error) {
 		}
 	}
 
-	if options.Kernel != "mihomo" && options.Kernel != "clash" {
+	if options.Kernel != "mihomo" {
 		return installOptions{}, fmt.Errorf("不支持的内核：%s", options.Kernel)
 	}
 	if options.Home == "" {
@@ -332,7 +336,7 @@ func (a *App) prepareKernel(
 	region installRegion,
 ) (string, error) {
 	if archive, err := findArchive(options.AssetsDir, options.Kernel); err == nil {
-		if err := install.ValidateGzip(archive); err != nil {
+		if err := assets.ValidateGzip(archive); err != nil {
 			return "", err
 		}
 		return archive, nil
@@ -340,27 +344,23 @@ func (a *App) prepareKernel(
 
 	level := region.level
 	version := options.VersionMihomo
-	if options.Kernel == "mihomo" && version == "" {
-		latest, err := install.ResolveLatestTag(ctx, client, install.KernelRepository)
+	if version == "" {
+		latest, err := assets.ResolveLatestTag(ctx, client, assets.KernelRepository)
 		if err != nil {
 			return "", fmt.Errorf("获取 mihomo 版本失败，可用 --version-mihomo 指定: %w", err)
 		}
 		a.Printer.OKWithEmoji("🏷️", "mihomo → "+latest)
 		version = latest
 	}
-	if options.Kernel != "mihomo" {
-		level = ""
-		version = ""
-	}
 	if version != "" && level != "" {
 		version = level + "-" + version
 	}
 
-	address, err := install.KernelURL(options.Kernel, region.architecture, level, version)
+	address, err := assets.KernelURL(options.Kernel, region.architecture, level, version)
 	if err != nil {
 		return "", err
 	}
-	return a.downloadArchive(ctx, client, options, address, install.ValidateGzip)
+	return a.downloadArchive(ctx, client, options, address, assets.ValidateGzip)
 }
 
 // prepareSubconverter 确保 subconverter 压缩包可用，缺失时下载。
@@ -371,7 +371,7 @@ func (a *App) prepareSubconverter(
 	region installRegion,
 ) (string, error) {
 	if archive, err := findArchive(options.AssetsDir, subconverterName); err == nil {
-		if err := install.ValidateGzip(archive); err != nil {
+		if err := assets.ValidateGzip(archive); err != nil {
 			return "", err
 		}
 		return archive, nil
@@ -379,7 +379,7 @@ func (a *App) prepareSubconverter(
 
 	version := options.VersionSubconverter
 	if version == "" {
-		latest, err := install.ResolveLatestTag(ctx, client, options.SubconverterRepo)
+		latest, err := assets.ResolveLatestTag(ctx, client, options.SubconverterRepo)
 		if err != nil {
 			return "", fmt.Errorf("获取 subconverter 版本失败，可用 --version-subconverter 指定: %w", err)
 		}
@@ -387,11 +387,11 @@ func (a *App) prepareSubconverter(
 		version = latest
 	}
 
-	address, err := install.SubconverterURL(options.SubconverterRepo, region.architecture, version)
+	address, err := assets.SubconverterURL(options.SubconverterRepo, region.architecture, version)
 	if err != nil {
 		return "", err
 	}
-	return a.downloadArchive(ctx, client, options, address, install.ValidateGzip)
+	return a.downloadArchive(ctx, client, options, address, assets.ValidateGzip)
 }
 
 // prepareUIArchive 查找或下载 Web UI 压缩包，跳过安装时返回空路径。
@@ -405,7 +405,7 @@ func (a *App) prepareUIArchive(
 		if err != nil {
 			continue
 		}
-		if err := install.ValidateZip(archive); err != nil {
+		if err := assets.ValidateZip(archive); err != nil {
 			return "", err
 		}
 		return archive, nil
@@ -422,13 +422,13 @@ func (a *App) prepareUIArchive(
 		address = defaultUIDistURL
 	}
 	if !isRemoteAddress(address) {
-		if err := install.ValidateZip(address); err != nil {
+		if err := assets.ValidateZip(address); err != nil {
 			return "", fmt.Errorf("校验 Web UI 压缩包 %s: %w", address, err)
 		}
 		return address, nil
 	}
 
-	return a.downloadArchive(ctx, client, options, address, install.ValidateZip)
+	return a.downloadArchive(ctx, client, options, address, assets.ValidateZip)
 }
 
 // isRemoteAddress 判断地址是否为 http 或 https 地址。
@@ -448,11 +448,11 @@ func (a *App) downloadArchive(
 		return "", fmt.Errorf("创建依赖目录: %w", err)
 	}
 
-	proxied := install.WithProxy(options.GHProxy, address)
+	proxied := assets.WithProxy(options.GHProxy, address)
 	target := filepath.Join(options.AssetsDir, filepath.Base(address))
 	a.Printer.OKWithEmoji("⏳", "正在下载："+proxied)
 
-	if err := install.Download(ctx, client, proxied, target, "clashctl"); err != nil {
+	if err := assets.Download(ctx, client, proxied, target, "clashctl"); err != nil {
 		return "", err
 	}
 	if err := validate(target); err != nil {
@@ -645,16 +645,7 @@ CLASHCTL_SUB_TIMEOUT=%d
 
 # 订阅下载 UA
 CLASHCTL_SUB_UA=mihomo
-
-######################################
-#
-#   以下参数由安装命令生成
-#
-######################################
-
-# 实际安装的内核
-CLASHCTL_KERNEL=%s
-`, int(options.DownloadTimeout.Seconds()), options.Kernel)
+`, int(options.DownloadTimeout.Seconds()))
 
 	path := filepath.Join(a.Paths.Home, ".env")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

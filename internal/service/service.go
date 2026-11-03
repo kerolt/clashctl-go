@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nelvko/clashctl-go/internal/config"
-	"github.com/nelvko/clashctl-go/internal/process"
+	"github.com/kerolt/clashctl-go/internal/config"
+	"github.com/kerolt/clashctl-go/internal/process"
 )
 
 // Manager 保存识别到的服务管理器与内核路径。

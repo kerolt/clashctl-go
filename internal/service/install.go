@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/nelvko/clashctl-go/internal/process"
+	"github.com/kerolt/clashctl-go/internal/process"
 )
 
 // InstallUnit 写入并启用当前服务管理器的服务单元，返回单元文件路径。
@@ -32,7 +32,7 @@ func (m *Manager) InstallUnit(ctx context.Context) (string, error) {
 
 	params := UnitParams{
 		Kernel:      m.Kernel,
-		Description: m.Kernel + " Daemon, A[nother] Clash Kernel (clashctl)",
+		Description: m.Kernel + " Daemon (clashctl)",
 		CommandPath: m.KernelPath,
 		CommandArgs: fmt.Sprintf("-d %s -f %s", m.Paths.Resources, m.Paths.RuntimeConfig),
 		CommandFull: fmt.Sprintf("%s -d %s -f %s", m.KernelPath, m.Paths.Resources, m.Paths.RuntimeConfig),

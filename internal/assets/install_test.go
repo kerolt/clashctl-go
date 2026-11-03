@@ -1,4 +1,4 @@
-package install
+package assets
 
 import (
 	"archive/tar"
@@ -59,15 +59,9 @@ func TestKernelURL(t *testing.T) {
 		t.Fatalf("KernelURL() = %q, want %q", got, want)
 	}
 
-	got, err = KernelURL("clash", "amd64", "", "")
-	if err != nil {
-		t.Fatalf("KernelURL() error = %v", err)
+	if _, err := KernelURL("clash", "amd64", "v1", "v1-v1.19.25"); err == nil {
+		t.Fatal("KernelURL() error = nil for unsupported kernel")
 	}
-	want = "https://github.com/nelvko/clash-for-linux-install/releases/download/clash/clash-linux-amd64-2023.08.17.gz"
-	if got != want {
-		t.Fatalf("KernelURL() = %q, want %q", got, want)
-	}
-
 	if _, err := KernelURL("mihomo", "riscv64", "v1", "v1-v1.19.25"); err == nil {
 		t.Fatal("KernelURL() error = nil for unsupported arch")
 	}

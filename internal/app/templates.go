@@ -3,7 +3,7 @@ package app
 import (
 	_ "embed"
 
-	"github.com/nelvko/clashctl-go/scripts"
+	"github.com/kerolt/clashctl-go/scripts"
 )
 
 //go:embed templates/mixin.yaml

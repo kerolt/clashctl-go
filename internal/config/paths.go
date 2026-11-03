@@ -77,11 +77,3 @@ func defaultHome() (string, error) {
 	}
 	return filepath.Join(currentUser.HomeDir, ".local", "share", "clashctl"), nil
 }
-
-// KernelFromEnvironment 返回配置的内核名，默认 mihomo。
-func KernelFromEnvironment() string {
-	if kernel := os.Getenv("CLASHCTL_KERNEL"); kernel != "" {
-		return kernel
-	}
-	return "mihomo"
-}

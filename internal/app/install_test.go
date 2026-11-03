@@ -14,9 +14,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nelvko/clashctl-go/internal/config"
-	"github.com/nelvko/clashctl-go/internal/output"
+	"github.com/kerolt/clashctl-go/internal/config"
+	"github.com/kerolt/clashctl-go/internal/output"
 )
+
+// TestInstallHelp 核验安装帮助正常返回成功状态。
+func TestInstallHelp(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	application := &App{
+		Printer: output.New(&bytes.Buffer{}, stderr),
+		Paths:   config.NewPaths(filepath.Join(t.TempDir(), "clashctl"), "mihomo"),
+	}
+
+	if err := application.install(context.Background(), []string{"--help"}); err != nil {
+		t.Fatalf("install(--help) error = %v", err)
+	}
+	if !strings.Contains(stderr.String(), "Usage of install:") {
+		t.Fatalf("install help missing usage:\n%s", stderr.String())
+	}
+}
 
 // TestInstall 在临时目录中完整执行一次安装，并核验生成的文件。
 func TestInstall(t *testing.T) {
@@ -38,14 +54,14 @@ func TestInstall(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	application := &App{
 		Printer: output.New(stdout, &bytes.Buffer{}),
-		Paths:   config.NewPaths(home, "clash"),
+		Paths:   config.NewPaths(home, "mihomo"),
 	}
 
 	err := application.install(context.Background(), []string{
 		"--home", home,
 		"--assets", assets,
 		"--resources", resources,
-		"--kernel", "clash",
+		"--kernel", "mihomo",
 		"--sub-url", "file://" + baseConfig,
 		"--no-service",
 		"--no-start",
@@ -55,7 +71,7 @@ func TestInstall(t *testing.T) {
 		t.Fatalf("install() error = %v\noutput:\n%s", err, stdout.String())
 	}
 
-	paths := config.NewPaths(home, "clash")
+	paths := config.NewPaths(home, "mihomo")
 	expectFile(t, paths.KernelPath)
 	expectFile(t, paths.SubconverterPath)
 	expectFile(t, paths.SubconverterConf)
@@ -81,8 +97,8 @@ func TestInstall(t *testing.T) {
 	}
 
 	env := readTestFile(t, filepath.Join(home, ".env"))
-	if !strings.Contains(env, "CLASHCTL_KERNEL=clash") {
-		t.Fatalf(".env missing kernel:\n%s", env)
+	if !strings.Contains(env, "CLASHCTL_SUB_UA=mihomo") {
+		t.Fatalf(".env missing subscription user agent:\n%s", env)
 	}
 
 	wrapper := readTestFile(t, filepath.Join(home, "scripts", "cmd", "clashctl.sh"))
@@ -113,7 +129,6 @@ func TestInstallDoesNotTouchStartupHome(t *testing.T) {
 	baseConfig := writeTestBaseConfig(t, root)
 
 	t.Setenv("CLASHCTL_HOME", startupHome)
-	t.Setenv("CLASHCTL_KERNEL", "clash")
 
 	application, err := New(&bytes.Buffer{}, &bytes.Buffer{}, strings.NewReader(""))
 	if err != nil {
@@ -122,7 +137,7 @@ func TestInstallDoesNotTouchStartupHome(t *testing.T) {
 
 	err = application.install(context.Background(), []string{
 		"--home", targetHome,
-		"--kernel", "clash",
+		"--kernel", "mihomo",
 		"--assets", assets,
 		"--resources", resources,
 		"--sub-url", "file://" + baseConfig,
@@ -178,7 +193,7 @@ func TestParseInstallArgs(t *testing.T) {
 	}
 
 	options, err := application.parseInstallArgs([]string{
-		"clash",
+		"mihomo",
 		"https://example.com/sub",
 		"--home", home,
 		"--assets", root,
@@ -186,8 +201,8 @@ func TestParseInstallArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseInstallArgs() error = %v", err)
 	}
-	if options.Kernel != "clash" {
-		t.Fatalf("Kernel = %q, want clash", options.Kernel)
+	if options.Kernel != "mihomo" {
+		t.Fatalf("Kernel = %q, want mihomo", options.Kernel)
 	}
 	if options.SubURL != "https://example.com/sub" {
 		t.Fatalf("SubURL = %q", options.SubURL)
@@ -196,7 +211,7 @@ func TestParseInstallArgs(t *testing.T) {
 		t.Fatalf("Home = %q, want %q", options.Home, home)
 	}
 
-	if _, err := application.parseInstallArgs([]string{"--kernel", "v2ray"}); err == nil {
+	if _, err := application.parseInstallArgs([]string{"--kernel", "clash"}); err == nil {
 		t.Fatal("parseInstallArgs() error = nil for unsupported kernel")
 	}
 }
@@ -219,7 +234,7 @@ func prepareInstallBinaries(t *testing.T, assets, resources string) {
 
 	// 假内核与假 subconverter 只需要成功退出，用于校验配置与安装流程。
 	if err := writeTestGzip(
-		filepath.Join(assets, "clash-linux-amd64-test.gz"),
+		filepath.Join(assets, "mihomo-linux-amd64-test.gz"),
 		[]byte("#!/bin/sh\nexit 0\n"),
 	); err != nil {
 		t.Fatalf("create kernel archive: %v", err)
@@ -372,11 +387,11 @@ func TestInstallDownloadsUI(t *testing.T) {
 
 	application := &App{
 		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
-		Paths:   config.NewPaths(home, "clash"),
+		Paths:   config.NewPaths(home, "mihomo"),
 	}
 	err = application.install(context.Background(), []string{
 		"--home", home,
-		"--kernel", "clash",
+		"--kernel", "mihomo",
 		"--assets", assets,
 		"--resources", resources,
 		"--sub-url", "file://" + baseConfig,
@@ -416,11 +431,11 @@ func TestInstallUsesLocalUIDist(t *testing.T) {
 
 	application := &App{
 		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
-		Paths:   config.NewPaths(home, "clash"),
+		Paths:   config.NewPaths(home, "mihomo"),
 	}
 	err := application.install(context.Background(), []string{
 		"--home", home,
-		"--kernel", "clash",
+		"--kernel", "mihomo",
 		"--assets", assets,
 		"--resources", resources,
 		"--sub-url", "file://" + baseConfig,
@@ -453,11 +468,11 @@ func TestInstallRejectsBrokenUIDist(t *testing.T) {
 
 	application := &App{
 		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
-		Paths:   config.NewPaths(home, "clash"),
+		Paths:   config.NewPaths(home, "mihomo"),
 	}
 	err := application.install(context.Background(), []string{
 		"--home", home,
-		"--kernel", "clash",
+		"--kernel", "mihomo",
 		"--assets", assets,
 		"--resources", resources,
 		"--ui-dist", filepath.Join(root, "missing.zip"),
@@ -477,23 +492,22 @@ func TestInstallRejectsBrokenUIDist(t *testing.T) {
 func TestParseInstallArgsEnvDefaults(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "clashctl")
 
-	t.Setenv("CLASHCTL_KERNEL", "clash")
-	t.Setenv("CLASHCTL_SUB_UA", "clash-ua")
+	t.Setenv("CLASHCTL_SUB_UA", "mihomo-ua")
 	t.Setenv("CLASHCTL_DOWNLOAD_TIMEOUT", "30")
 
 	application := &App{
 		Printer: output.New(&bytes.Buffer{}, &bytes.Buffer{}),
-		Paths:   config.NewPaths(home, "clash"),
+		Paths:   config.NewPaths(home, "mihomo"),
 	}
 
 	options, err := application.parseInstallArgs(nil)
 	if err != nil {
 		t.Fatalf("parseInstallArgs() error = %v", err)
 	}
-	if options.Kernel != "clash" {
-		t.Fatalf("Kernel = %q, want clash", options.Kernel)
+	if options.Kernel != "mihomo" {
+		t.Fatalf("Kernel = %q, want mihomo", options.Kernel)
 	}
-	if options.SubUA != "clash-ua" {
+	if options.SubUA != "mihomo-ua" {
 		t.Fatalf("SubUA = %q", options.SubUA)
 	}
 	if options.DownloadTimeout != 30*time.Second {
@@ -507,8 +521,7 @@ func TestParseInstallArgsEnvDefaults(t *testing.T) {
 // TestParseInstallArgsIgnoresLegacyFile 核验旧参数文件不再影响安装参数。
 func TestParseInstallArgsIgnoresLegacyFile(t *testing.T) {
 	workDir := t.TempDir()
-	legacy := `CLASHCTL_KERNEL=clash
-CLASHCTL_HOME=/tmp/legacy-home
+	legacy := `CLASHCTL_HOME=/tmp/legacy-home
 ZIP_UI=/tmp/legacy-dist.zip
 `
 	if err := os.WriteFile(filepath.Join(workDir, ".env.install"), []byte(legacy), 0o644); err != nil {
@@ -517,7 +530,6 @@ ZIP_UI=/tmp/legacy-dist.zip
 	t.Chdir(workDir)
 
 	home := filepath.Join(t.TempDir(), "clashctl")
-	t.Setenv("CLASHCTL_KERNEL", "")
 	t.Setenv("CLASHCTL_SUB_UA", "")
 
 	application := &App{

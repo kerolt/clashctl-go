@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nelvko/clashctl-go/internal/config"
-	"github.com/nelvko/clashctl-go/internal/output"
-	"github.com/nelvko/clashctl-go/internal/service"
-	"github.com/nelvko/clashctl-go/internal/subscription"
+	"github.com/kerolt/clashctl-go/internal/config"
+	"github.com/kerolt/clashctl-go/internal/output"
+	"github.com/kerolt/clashctl-go/internal/service"
+	"github.com/kerolt/clashctl-go/internal/subscription"
 )
 
 // App 保存命令所需的依赖与终端输入输出。
@@ -32,19 +32,14 @@ type App struct {
 
 // New 按当前环境构造 App。
 func New(out, errOut io.Writer, input io.Reader) (*App, error) {
-	// 读取安装位置和内核名称。
-	kernel := config.KernelFromEnvironment()
+	// 固定使用 mihomo 作为内核。
+	kernel := "mihomo"
 	paths, err := config.FromEnvironment(kernel)
 	if err != nil {
 		return nil, err
 	}
 	loadDotEnv(paths.Home)
 
-	// .env 中的内核设置优先于默认值。
-	if value := os.Getenv("CLASHCTL_KERNEL"); value != "" {
-		kernel = value
-		paths = config.NewPaths(paths.Home, kernel)
-	}
 	timeout := 5 * time.Second
 	if value := os.Getenv("CLASHCTL_SUB_TIMEOUT"); value != "" {
 		seconds, parseErr := strconv.Atoi(value)
@@ -75,8 +70,8 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return a.help()
 	}
-	if args[0] == "--home" || args[0] == "--kernel" {
-		return fmt.Errorf("global options must be configured with CLASHCTL_HOME and CLASHCTL_KERNEL")
+	if args[0] == "--home" {
+		return fmt.Errorf("global options must be configured with CLASHCTL_HOME")
 	}
 	command := args[0]
 	arguments := args[1:]

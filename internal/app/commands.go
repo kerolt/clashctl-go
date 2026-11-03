@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nelvko/clashctl-go/internal/config"
-	"github.com/nelvko/clashctl-go/internal/process"
-	"github.com/nelvko/clashctl-go/internal/subscription"
+	"github.com/kerolt/clashctl-go/internal/config"
+	"github.com/kerolt/clashctl-go/internal/process"
+	"github.com/kerolt/clashctl-go/internal/subscription"
 	"gopkg.in/yaml.v3"
 )
 

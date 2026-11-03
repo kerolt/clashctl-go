@@ -1,4 +1,4 @@
-module github.com/nelvko/clashctl-go
+module github.com/kerolt/clashctl-go
 
 go 1.26
 

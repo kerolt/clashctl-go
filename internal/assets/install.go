@@ -1,5 +1,5 @@
-// Package install 负责安装依赖的下载、校验和解压。
-package install
+// Package assets 负责安装依赖的下载、校验和解压。
+package assets
 
 import (
 	"archive/tar"
@@ -19,9 +19,8 @@ import (
 )
 
 const (
-	KernelRepository       = "MetaCubeX/mihomo"
-	clashReleaseRepository = "nelvko/clash-for-linux-install"
-	latestReleaseAPI       = "https://api.github.com/repos/%s/releases/latest"
+	KernelRepository = "MetaCubeX/mihomo"
+	latestReleaseAPI = "https://api.github.com/repos/%s/releases/latest"
 )
 
 // NewClient 构造安装阶段使用的 HTTP 客户端，允许不校验证书以适配自建下载代理。
@@ -121,22 +120,11 @@ func ResolveLatestTag(ctx context.Context, client *http.Client, repository strin
 	return payload.TagName, nil
 }
 
-// KernelURL 返回内核压缩包的下载地址。
+// KernelURL 返回 mihomo 压缩包的下载地址。
 func KernelURL(kernel, arch, level, version string) (string, error) {
-	if kernel == "clash" {
-		switch arch {
-		case "amd64":
-			return clashReleaseURL("amd64"), nil
-		case "386":
-			return clashReleaseURL("386"), nil
-		case "arm64":
-			return clashReleaseURL("arm64"), nil
-		case "arm":
-			return clashReleaseURL("armv5"), nil
-		}
-		return "", fmt.Errorf("clash 暂不支持架构 %s", arch)
+	if kernel != "mihomo" {
+		return "", fmt.Errorf("不支持的内核：%s", kernel)
 	}
-
 	if version == "" {
 		return "", fmt.Errorf("缺少 mihomo 版本号")
 	}
@@ -152,14 +140,6 @@ func KernelURL(kernel, arch, level, version string) (string, error) {
 		return mihomoURL("armv7", level, version), nil
 	}
 	return "", fmt.Errorf("mihomo 暂不支持架构 %s", arch)
-}
-
-func clashReleaseURL(suffix string) string {
-	return fmt.Sprintf(
-		"https://github.com/%s/releases/download/clash/clash-linux-%s-2023.08.17.gz",
-		clashReleaseRepository,
-		suffix,
-	)
 }
 
 func mihomoURL(arch, level, version string) string {

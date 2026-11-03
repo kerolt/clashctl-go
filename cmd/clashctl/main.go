@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nelvko/clashctl-go/internal/app"
+	"github.com/kerolt/clashctl-go/internal/app"
 )
 
 // main 启动 clashctl 命令，并把终端信号传递给上下文。
